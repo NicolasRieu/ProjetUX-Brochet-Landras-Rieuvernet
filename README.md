@@ -19,3 +19,34 @@ Existe-t-il une corrélation entre le nombre d'habitant/le nombre de participati
 | Compare            | Comparer la proportion pour un pays et la moyenne global    |
 | Locate             | Par pays   |
 | Identify           | Un intervalle  par population   |
+
+
+## Publics ciblés:
+
+1. **Commités Internationals des Jeux olympiques** qui cherchent à prouver que chaque nation, peut-importe sa taille a la possibilité de gagner des médailles. 
+2. **Journalistes sportifs** qui souhaitent analyser sous un angle différents le nombre de victoires de chaque nation, en les mettant à l'échelle de la population des pays et du nombre de participants par édition.
+3. **Historien** qui souhaitent analyser les évolutions au cours de l'histoire des Jeux Olympiques à travers différents critères comme la proportion de victoire entre hommes et femmes, ou la quantité de médailles par épreuve pour chaque pays.
+ 
+Tâches par types d'utilisateurs: ![](image/TasksByUser.png)
+
+# Visualisation de Romain Brochet
+
+# Visualisation de Adrien Landras
+
+# Visualisation de Nicolas Rieuvernet
+
+### Technique de visualisation
+
+**Graphique à bulles**: ![](image/GraphiqueABulle.png)
+
+### Axes :
+
+X = Nombre de participants par pays sur une année
+
+Y = Nombre de médailles par pays sur une année
+
+Taille des bulles = Nombre d'habitants par pays sur une année
+
+Couleur = Saison de Jeux Olympiques (Hiver/Eté)
+
+Dimension de temps = Animation sur les années
