@@ -31,6 +31,14 @@ Tâches par types d'utilisateurs: ![](image/TasksByUser.png)
 
 # Visualisation de Romain Brochet
 
+### Technique de visualisation
+
+**Graphique à bulles**: ![](image/world_map.png)
+
+Avec une barre d'animation pour la temporalité
+
+**Barre animation** : ![](image/frise.png)
+
 # Visualisation de Adrien Landras
 
 # Visualisation de Nicolas Rieuvernet
