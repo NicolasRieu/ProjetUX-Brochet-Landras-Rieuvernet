@@ -41,6 +41,17 @@ Avec une barre d'animation pour la temporalité
 
 # Visualisation de Adrien Landras
 
+### Technique de visualisation
+
+**Rose de Nightingale** : ![](image/Rose%20de%20Nightingale.png)
+
+### Objectfis :
+
+Comparer les ratios nombre de médailles par nombre d'habitants et nombre de participations sur une année.
+
+Dimension temps : Animation sur les années
+
+
 # Visualisation de Nicolas Rieuvernet
 
 ### Technique de visualisation
