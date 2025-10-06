@@ -1,29 +1,135 @@
 <!DOCTYPE html>
+<html>
+<head>
 <meta charset="utf-8">
+<title>Olympic Bubble Chart</title>
 
 <!-- Load d3.js -->
 <script src="https://d3js.org/d3.v6.js"></script>
 
-<!-- Create a div where the graph will take place -->
-<div id="my_dataviz"></div>
-
-<!-- A bit of CSS: change stroke color of circle on hover (white -> black) -->
 <style>
+  body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+  
+  .controls {
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  label {
+    margin-right: 10px;
+    font-weight: bold;
+  }
+  
+  .slider-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+  }
+  
+  #yearSlider {
+    width: 400px;
+    cursor: pointer;
+  }
+  
+  #yearDisplay {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    min-width: 50px;
+  }
+  
+  .season-buttons {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .season-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    border: 2px solid #333;
+    border-radius: 5px;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .season-btn:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .season-btn.active {
+    background-color: #4CAF50;
+    color: white;
+    border-color: #4CAF50;
+  }
+  
   .bubbles {
     stroke-width: 2px;
     stroke: white;
+    opacity: 0.7;
   }
+  
   .bubbles:hover {
     stroke: black;
+    opacity: 1;
+  }
+  
+  .axis-label {
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  .title {
+    font-size: 18px;
+    font-weight: bold;
   }
 </style>
+</head>
+<body>
+
+<h1>Visualisation des Jeux Olympiques - Bubble Chart</h1>
+
+<!-- Controls for year and season selection -->
+<div class="controls">
+  <div class="control-row">
+    <label for="yearSlider">Année:</label>
+    <div class="slider-container">
+      <input type="range" id="yearSlider" min="1896" max="2016" value="2016" step="2">
+      <span id="yearDisplay">2016</span>
+    </div>
+  </div>
+  
+  <div class="control-row">
+    <label>Saison:</label>
+    <div class="season-buttons">
+      <button class="season-btn active" data-season="Summer">Été (Summer)</button>
+      <button class="season-btn" data-season="Winter">Hiver (Winter)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz"></div>
 
 <script>
 
 // set the dimensions and margins of the graph
-const margin = {top: 10, right: 20, bottom: 30, left: 50},
-    width = 500 - margin.left - margin.right,
-    height = 420 - margin.top - margin.bottom;
+const margin = {top: 100, right: 20, bottom: 60, left: 80},
+    width = 1000 - margin.left - margin.right,
+    height = 600 - margin.top - margin.bottom;
 
 // append the svg object to the body of the page
 const svg = d3.select("#my_dataviz")
@@ -33,81 +139,234 @@ const svg = d3.select("#my_dataviz")
   .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-//Read the data
-d3.csv("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/4_ThreeNum.csv").then( function(data) {
+// Global variables to store data
+let athleteData, populationData;
+let availableYears = [];
+let currentSeason = "Summer";
 
-  // Add X axis
+// Load both CSV files
+Promise.all([
+  d3.text("../../CSV_Dest/athlete_events_opti.csv"),
+  d3.csv("../../CSV_Dest/population-1900-2016.csv")
+]).then(function(files) {
+  // Parse the athlete data with semicolon delimiter
+  const athleteText = files[0];
+  athleteData = d3.dsvFormat(";").parse(athleteText, d => {
+    return {
+      ID: d.ID,
+      Name: d.Name,
+      Sex: d.Sex,
+      Team: d.Team,
+      NOC: d.NOC,
+      Games: d.Games,
+      Year: +d.Year,
+      Season: d.Season,
+      Sport: d.Sport,
+      Event: d.Event,
+      Medal: d.Medal
+    };
+  });
+  
+  populationData = files[1];
+  
+  // Get unique years from athlete data
+  availableYears = [...new Set(athleteData.map(d => d.Year))]
+    .sort((a, b) => a - b);
+  
+  // Setup slider
+  const yearSlider = d3.select("#yearSlider");
+  const yearDisplay = d3.select("#yearDisplay");
+  
+  yearSlider
+    .attr("min", d3.min(availableYears))
+    .attr("max", d3.max(availableYears))
+    .property("value", 2016);
+  
+  yearDisplay.text(2016);
+  
+  // Update chart when slider changes
+  yearSlider.on("input", function() {
+    const selectedYear = +this.value;
+    // Find closest available year
+    const closestYear = availableYears.reduce((prev, curr) => 
+      Math.abs(curr - selectedYear) < Math.abs(prev - selectedYear) ? curr : prev
+    );
+    yearDisplay.text(closestYear);
+    updateChart(closestYear, currentSeason);
+  });
+  
+  // Setup season buttons
+  const seasonButtons = d3.selectAll(".season-btn");
+  seasonButtons.on("click", function() {
+    // Remove active class from all buttons
+    seasonButtons.classed("active", false);
+    // Add active class to clicked button
+    d3.select(this).classed("active", true);
+    // Update current season
+    currentSeason = this.dataset.season;
+    // Update chart
+    const currentYear = +yearDisplay.text();
+    updateChart(currentYear, currentSeason);
+  });
+  
+  // Initial chart render
+  updateChart(2016, currentSeason);
+});
+
+function updateChart(selectedYear, season) {
+  // Filter data for selected year and season
+  const yearAthletes = athleteData.filter(d => d.Year === selectedYear && d.Season === season);
+  
+  // Calculate participants per country
+  const participantsByCountry = d3.rollup(
+    yearAthletes,
+    v => new Set(v.map(d => d.ID)).size, // Count unique athletes
+    d => d.NOC
+  );
+  
+  // Calculate medals per country
+  const medalsByCountry = d3.rollup(
+    yearAthletes.filter(d => d.Medal && d.Medal.trim() !== ""),
+    v => v.length,
+    d => d.NOC
+  );
+  
+  // Get population for selected year
+  const yearPopulation = d3.rollup(
+    populationData.filter(d => d.Year === selectedYear),
+    v => v[0]["Population (historical)"],
+    d => d.Code
+  );
+  
+  // Combine all data
+  const combinedData = [];
+  participantsByCountry.forEach((participants, noc) => {
+    const medals = medalsByCountry.get(noc) || 0;
+    const population = yearPopulation.get(noc);
+    
+    if (population && population > 0) { // Only include countries with population data
+      combinedData.push({
+        noc: noc,
+        participants: participants,
+        medals: medals,
+        population: population
+      });
+    }
+  });
+  
+  // Clear previous chart
+  svg.selectAll("*").remove();
+  
+  // Add X axis (participants)
+  const maxParticipants = d3.max(combinedData, d => d.participants);
   const x = d3.scaleLinear()
-    .domain([0, 12000])
-    .range([ 0, width ]);
+    .domain([0, maxParticipants * 1.1])
+    .range([0, width]);
   svg.append("g")
     .attr("transform", `translate(0, ${height})`)
     .call(d3.axisBottom(x));
-
-  // Add Y axis
+  
+  // Add X axis label
+  svg.append("text")
+    .attr("class", "axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", width / 2)
+    .attr("y", height + 40)
+    .text("Nombre de participants");
+  
+  // Add Y axis (medals)
+  const maxMedals = d3.max(combinedData, d => d.medals);
   const y = d3.scaleLinear()
-    .domain([35, 90])
-    .range([ height, 0]);
+    .domain([0, maxMedals * 1.1])
+    .range([height, 0]);
   svg.append("g")
     .call(d3.axisLeft(y));
-
+  
+  // Add Y axis label
+  svg.append("text")
+    .attr("class", "axis-label")
+    .attr("text-anchor", "middle")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -height / 2)
+    .attr("y", -50)
+    .text("Nombre de médailles");
+  
+  // Add title
+  const seasonText = season === "Summer" ? "Été" : "Hiver";
+  svg.append("text")
+    .attr("class", "title")
+    .attr("text-anchor", "middle")
+    .attr("x", width / 2)
+    .attr("y", -10)
+    .text(`Jeux Olympiques ${seasonText} ${selectedYear}`);
+  
   // Add a scale for bubble size
-  const z = d3.scaleLinear()
-    .domain([200000, 1310000000])
-    .range([ 4, 40]);
-
+  const minPop = d3.min(combinedData, d => d.population);
+  const maxPop = d3.max(combinedData, d => d.population);
+  const z = d3.scaleSqrt()
+    .domain([minPop, maxPop])
+    .range([5, 50]);
+  
   // Add a scale for bubble color
   const myColor = d3.scaleOrdinal()
-    .domain(["Asia", "Europe", "Americas", "Africa", "Oceania"])
-    .range(d3.schemeSet2);
-
-  // -1- Create a tooltip div that is hidden by default:
-  const tooltip = d3.select("#my_dataviz")
+    .range(d3.schemeCategory10);
+  
+  // Create a tooltip div that is hidden by default:
+  const tooltip = d3.select("body")
     .append("div")
       .style("opacity", 0)
       .attr("class", "tooltip")
+      .style("position", "absolute")
       .style("background-color", "black")
       .style("border-radius", "5px")
       .style("padding", "10px")
       .style("color", "white")
-
-  // -2- Create 3 functions to show / update (when mouse move but stay on same circle) / hide the tooltip
+      .style("pointer-events", "none");
+  
+  // Create 3 functions to show / update / hide the tooltip
   const showTooltip = function(event, d) {
     tooltip
       .transition()
-      .duration(200)
+      .duration(200);
     tooltip
       .style("opacity", 1)
-      .html("Country: " + d.country)
-      .style("left", (event.x)/2 + "px")
-      .style("top", (event.y)/2+30 + "px")
+      .html(`<strong>${d.noc}</strong><br/>
+             Participants: ${d.participants}<br/>
+             Médailles: ${d.medals}<br/>
+             Population: ${d3.format(",")(Math.round(d.population))}`)
+      .style("left", (event.pageX + 15) + "px")
+      .style("top", (event.pageY - 28) + "px");
   }
+  
   const moveTooltip = function(event, d) {
     tooltip
-      .style("left", (event.x)/2 + "px")
-      .style("top", (event.y)/2+30 + "px")
+      .style("left", (event.pageX + 15) + "px")
+      .style("top", (event.pageY - 28) + "px");
   }
+  
   const hideTooltip = function(event, d) {
     tooltip
       .transition()
       .duration(200)
-      .style("opacity", 0)
+      .style("opacity", 0);
   }
-
+  
   // Add dots
   svg.append('g')
-    .selectAll("dot")
-    .data(data)
+    .selectAll("circle")
+    .data(combinedData)
     .join("circle")
       .attr("class", "bubbles")
-      .attr("cx", d => x(d.gdpPercap))
-      .attr("cy", d => y(d.lifeExp))
-      .attr("r", d => z(d.pop))
-      .style("fill", d => myColor(d.continent))
-    // -3- Trigger the functions
-    .on("mouseover", showTooltip )
-    .on("mousemove", moveTooltip )
-    .on("mouseleave", hideTooltip )
+      .attr("cx", d => x(d.participants))
+      .attr("cy", d => y(d.medals))
+      .attr("r", d => z(d.population))
+      .style("fill", d => myColor(d.noc))
+    // Trigger the functions
+    .on("mouseover", showTooltip)
+    .on("mousemove", moveTooltip)
+    .on("mouseleave", hideTooltip);
+}
 
-  })
 </script>
+</body>
+</html>
