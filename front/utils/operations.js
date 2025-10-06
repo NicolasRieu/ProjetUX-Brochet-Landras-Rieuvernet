@@ -42,7 +42,8 @@ export async function loadData(athleteCsvPath, populationCsvPath) {
       Entity: d.Entity,
       Code: d.Code,
       Year: +d.Year,
-      Population: +d["Population (historical)"]
+      Population: +d["Population (historical)"],
+      Continent: d.Continent
     }));
 
     console.log("Population data parsed:", parsedPopulationData.length, "rows");
@@ -106,15 +107,15 @@ export function calculateMedalsByCountry(yearAthletes) {
 }
 
 /**
- * Récupère la population par pays pour une année donnée
+ * Récupère la population et le continent par pays pour une année donnée
  * @param {Array} populationData - Données de population
  * @param {number} year - Année
- * @returns {Map<string, number>} - Map de Code pays -> population
+ * @returns {Map<string, Object>} - Map de Code pays -> {population, continent}
  */
 export function getPopulationByCountry(populationData, year) {
   return d3.rollup(
     populationData.filter(d => d.Year === year),
-    v => v[0].Population,
+    v => ({ population: v[0].Population, continent: v[0].Continent }),
     d => d.Code
   );
 }
@@ -123,7 +124,7 @@ export function getPopulationByCountry(populationData, year) {
  * Combine les données de participants, médailles et population
  * @param {Map} participantsByCountry - Map de NOC -> participants
  * @param {Map} medalsByCountry - Map de NOC -> médailles
- * @param {Map} populationByCountry - Map de Code -> population
+ * @param {Map} populationByCountry - Map de Code -> {population, continent}
  * @returns {Array<Object>} - Tableau d'objets combinés
  */
 export function combineData(participantsByCountry, medalsByCountry, populationByCountry) {
@@ -131,14 +132,15 @@ export function combineData(participantsByCountry, medalsByCountry, populationBy
   
   participantsByCountry.forEach((participants, noc) => {
     const medals = medalsByCountry.get(noc) || 0;
-    const population = populationByCountry.get(noc);
+    const popData = populationByCountry.get(noc);
     
-    if (population && population > 0) {
+    if (popData && popData.population > 0) {
       combinedData.push({
         noc: noc,
         participants: participants,
         medals: medals,
-        population: population
+        population: popData.population,
+        continent: popData.continent || "Unknown"
       });
     }
   });

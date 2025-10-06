@@ -96,6 +96,39 @@
     font-size: 18px;
     font-weight: bold;
   }
+  
+  .legend {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    display: inline-block;
+  }
+  
+  .legend-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+  
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 20px;
+    margin-bottom: 5px;
+  }
+  
+  .legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 2px solid white;
+  }
+  
+  .legend-label {
+    font-size: 13px;
+  }
 </style>
 </head>
 <body>
@@ -123,6 +156,33 @@
 
 <!-- Create a div where the graph will take place -->
 <div id="my_dataviz"></div>
+
+<!-- Legend for continents -->
+<div class="legend">
+  <div class="legend-title">Légende - Continents:</div>
+  <div style="display: flex; flex-wrap: wrap;">
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #e74c3c;"></div>
+      <span class="legend-label">Africa</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #3498db;"></div>
+      <span class="legend-label">Americas</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #f39c12;"></div>
+      <span class="legend-label">Asia</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #2ecc71;"></div>
+      <span class="legend-label">Europe</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #9b59b6;"></div>
+      <span class="legend-label">Oceania</span>
+    </div>
+  </div>
+</div>
 
 <script type="module">
 
@@ -237,13 +297,13 @@ function updateChart(selectedYear, season) {
     .attr("y", height + 40)
     .text("Nombre de participants");
   
-  // Add Y axis (medals)
-  const maxMedals = d3.max(combinedData, d => d.medals);
+  // Add Y axis (population)
+  const maxPopulation = d3.max(combinedData, d => d.population);
   const y = d3.scaleLinear()
-    .domain([0, maxMedals * 1.1])
+    .domain([0, maxPopulation * 1.1])
     .range([height, 0]);
   svg.append("g")
-    .call(d3.axisLeft(y));
+    .call(d3.axisLeft(y).tickFormat(d3.format(".2s")));
   
   // Add Y axis label
   svg.append("text")
@@ -252,7 +312,7 @@ function updateChart(selectedYear, season) {
     .attr("transform", "rotate(-90)")
     .attr("x", -height / 2)
     .attr("y", -50)
-    .text("Nombre de médailles");
+    .text("Nombre d'habitants");
   
   // Add title
   const seasonText = season === "Summer" ? "Été" : "Hiver";
@@ -263,16 +323,26 @@ function updateChart(selectedYear, season) {
     .attr("y", -10)
     .text(`Jeux Olympiques ${seasonText} ${selectedYear}`);
   
-  // Add a scale for bubble size
-  const minPop = d3.min(combinedData, d => d.population);
-  const maxPop = d3.max(combinedData, d => d.population);
+  // Add a scale for bubble size (medals)
+  const minMedals = d3.min(combinedData, d => d.medals);
+  const maxMedals = d3.max(combinedData, d => d.medals);
   const z = d3.scaleSqrt()
-    .domain([minPop, maxPop])
-    .range([5, 50]);
+    .domain([minMedals, maxMedals])
+    .range([3, 40]);
   
-  // Add a scale for bubble color
+  // Add a scale for bubble color by continent
+  const continentColors = {
+    "Africa": "#9b59b6",      // Violet 
+    "Americas": "#3498db",    // Bleu 
+    "Asia": "#e74c3c",        // Rouge 
+    "Europe": "#2ecc71",      // Vert 
+    "Oceania": "#f39c12",     // Orange  
+    "Unknown": "#95a5a6"      // Gris
+  };
+  
   const myColor = d3.scaleOrdinal()
-    .range(d3.schemeCategory10);
+    .domain(["Africa", "Americas", "Asia", "Europe", "Oceania", "Unknown"])
+    .range(["#9b59b6", "#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#95a5a6"]);
   
   // Create a tooltip div that is hidden by default:
   const tooltip = d3.select("body")
@@ -293,7 +363,7 @@ function updateChart(selectedYear, season) {
       .duration(200);
     tooltip
       .style("opacity", 1)
-      .html(`<strong>${d.noc}</strong><br/>
+      .html(`<strong>${d.noc}</strong> (${d.continent})<br/>
              Participants: ${d.participants}<br/>
              Médailles: ${d.medals}<br/>
              Population: ${d3.format(",")(Math.round(d.population))}`)
@@ -321,9 +391,9 @@ function updateChart(selectedYear, season) {
     .join("circle")
       .attr("class", "bubbles")
       .attr("cx", d => x(d.participants))
-      .attr("cy", d => y(d.medals))
-      .attr("r", d => z(d.population))
-      .style("fill", d => myColor(d.noc))
+      .attr("cy", d => y(d.population))
+      .attr("r", d => z(d.medals))
+      .style("fill", d => myColor(d.continent))
     // Trigger the functions
     .on("mouseover", showTooltip)
     .on("mousemove", moveTooltip)
