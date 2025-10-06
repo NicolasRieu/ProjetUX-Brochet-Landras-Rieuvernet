@@ -5,10 +5,16 @@
   Nous avons utilisé un dataset JO complet comme point de départ. Afin de répondre à notre problématique, nous avons sélectionné uniquement certaines colonnes pertinentes (Id, Team, NOC, Year, Medal, Season). Les autres colonnes non nécessaires ont été supprimées pour simplifier le pipeline.
     - Dataset JO : `Id, Sex, Team, NOC, Year, Medal, Sport, Event, Season`  
     - Dataset Population : `NOC, Year, #NbreHabitant`
-- **Action :** importer les fichiers bruts dans `CSV_Dest`.
+  
+  
+  Fichier utilisé:
+    - "athlete_events.csv"
+    - "population-long-run-with-projections.csv"
 
+- **Action :** importer les fichiers bruts dans `CSV_Dest`.
+Pour ce faire nous utiliserons 
 ```
-charger("athlete_events.csv")
+charger("athlete_events_opti.csv")
 charger("population-1900-2016.csv")
 ```
 

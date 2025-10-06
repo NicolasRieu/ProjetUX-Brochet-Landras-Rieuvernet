@@ -9,8 +9,13 @@ project_root = os.path.dirname(script_dir)
 input_path = os.path.join(project_root, 'CSV_Source', 'population-long-run-with-projections.csv')
 df = pd.read_csv(input_path)
 
+# Supprimer la colonne "Population (projections)" si elle existe
+if 'Population (projections)' in df.columns:
+    df = df.drop(columns=['Population (projections)'])
+
 # Filtrer les années entre 1900 et 2016 inclus et garder uniquement les lignes avec un Code non null
 df_filtered = df[(df['Year'] >= 1900) & (df['Year'] <= 2016) & (df['Code'].notna())]
+
 
 # Sauvegarder le résultat dans un nouveau fichier
 output_path = os.path.join(project_root, 'CSV_Dest', 'population-1900-2016.csv')

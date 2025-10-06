@@ -33,7 +33,7 @@ Tâches par types d'utilisateurs: ![](image/TasksByUser.png)
 
 ### Technique de visualisation
 
-**Graphique à bulles**: ![](image/world_map.png)
+**Graphique Choropleth Map**: ![](image/world_map.png)
 
 Avec une barre d'animation pour la temporalité
 
