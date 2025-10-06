@@ -124,7 +124,10 @@
 <!-- Create a div where the graph will take place -->
 <div id="my_dataviz"></div>
 
-<script>
+<script type="module">
+
+// Import des fonctions depuis operations.js
+import * as ops from '../utils/operations.js';
 
 // set the dimensions and margins of the graph
 const margin = {top: 100, right: 20, bottom: 60, left: 80},
@@ -144,34 +147,16 @@ let athleteData, populationData;
 let availableYears = [];
 let currentSeason = "Summer";
 
-// Load both CSV files
-Promise.all([
-  d3.text("../../CSV_Dest/athlete_events_opti.csv"),
-  d3.csv("../../CSV_Dest/population-1900-2016.csv")
-]).then(function(files) {
-  // Parse the athlete data with semicolon delimiter
-  const athleteText = files[0];
-  athleteData = d3.dsvFormat(";").parse(athleteText, d => {
-    return {
-      ID: d.ID,
-      Name: d.Name,
-      Sex: d.Sex,
-      Team: d.Team,
-      NOC: d.NOC,
-      Games: d.Games,
-      Year: +d.Year,
-      Season: d.Season,
-      Sport: d.Sport,
-      Event: d.Event,
-      Medal: d.Medal
-    };
-  });
-  
-  populationData = files[1];
+// Load both CSV files using operations.js
+ops.loadData(
+  "../../CSV_Dest/athlete_events_opti.csv",
+  "../../CSV_Dest/population-1900-2016.csv"
+).then(function(loadedData) {
+  athleteData = loadedData.athleteData;
+  populationData = loadedData.populationData;
   
   // Get unique years from athlete data
-  availableYears = [...new Set(athleteData.map(d => d.Year))]
-    .sort((a, b) => a - b);
+  availableYears = ops.getAvailableYears(athleteData);
   
   // Setup slider
   const yearSlider = d3.select("#yearSlider");
@@ -187,10 +172,8 @@ Promise.all([
   // Update chart when slider changes
   yearSlider.on("input", function() {
     const selectedYear = +this.value;
-    // Find closest available year
-    const closestYear = availableYears.reduce((prev, curr) => 
-      Math.abs(curr - selectedYear) < Math.abs(prev - selectedYear) ? curr : prev
-    );
+    // Find closest available year using operations.js
+    const closestYear = ops.findClosestYear(availableYears, selectedYear);
     yearDisplay.text(closestYear);
     updateChart(closestYear, currentSeason);
   });
@@ -211,48 +194,28 @@ Promise.all([
   
   // Initial chart render
   updateChart(2016, currentSeason);
+}).catch(function(error) {
+  console.error("Error loading files:", error);
+  document.getElementById("my_dataviz").innerHTML = 
+    "<p style='color: red; font-weight: bold;'>Erreur de chargement des fichiers CSV. Vérifiez les chemins des fichiers et la console.</p>";
 });
 
 function updateChart(selectedYear, season) {
-  // Filter data for selected year and season
-  const yearAthletes = athleteData.filter(d => d.Year === selectedYear && d.Season === season);
+  // Utilisation des fonctions de operations.js pour préparer les données
+  const chartData = ops.prepareChartData(athleteData, populationData, selectedYear, season);
+  const combinedData = chartData.data;
   
-  // Calculate participants per country
-  const participantsByCountry = d3.rollup(
-    yearAthletes,
-    v => new Set(v.map(d => d.ID)).size, // Count unique athletes
-    d => d.NOC
-  );
-  
-  // Calculate medals per country
-  const medalsByCountry = d3.rollup(
-    yearAthletes.filter(d => d.Medal && d.Medal.trim() !== ""),
-    v => v.length,
-    d => d.NOC
-  );
-  
-  // Get population for selected year
-  const yearPopulation = d3.rollup(
-    populationData.filter(d => d.Year === selectedYear),
-    v => v[0]["Population (historical)"],
-    d => d.Code
-  );
-  
-  // Combine all data
-  const combinedData = [];
-  participantsByCountry.forEach((participants, noc) => {
-    const medals = medalsByCountry.get(noc) || 0;
-    const population = yearPopulation.get(noc);
-    
-    if (population && population > 0) { // Only include countries with population data
-      combinedData.push({
-        noc: noc,
-        participants: participants,
-        medals: medals,
-        population: population
-      });
-    }
-  });
+  // Vérifier s'il y a des données
+  if (combinedData.length === 0) {
+    svg.selectAll("*").remove();
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height / 2)
+      .attr("text-anchor", "middle")
+      .style("font-size", "16px")
+      .text(`Aucune donnée disponible pour ${season} ${selectedYear}`);
+    return;
+  }
   
   // Clear previous chart
   svg.selectAll("*").remove();
