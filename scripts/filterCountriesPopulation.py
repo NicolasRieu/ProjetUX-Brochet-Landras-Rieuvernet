@@ -5,9 +5,13 @@ import os
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(script_dir)
 
-# Charger le fichier CSV
+# Charger le fichier CSV de population
 input_path = os.path.join(project_root, 'CSV_Source', 'population-long-run-with-projections.csv')
 df = pd.read_csv(input_path)
+
+# Charger le fichier CSV des continents
+continents_path = os.path.join(project_root, 'CSV_Source', 'continents.csv')
+df_continents = pd.read_csv(continents_path)
 
 # Supprimer la colonne "Population (projections)" si elle existe
 if 'Population (projections)' in df.columns:
@@ -22,6 +26,13 @@ df_filtered = df_filtered[df_filtered['Code'].notna()]
 # Supprimer l'entité "World"
 df_filtered = df_filtered[df_filtered['Entity'] != 'World']
 
+# Créer un dictionnaire de mapping entre Code pays et Continent
+# Utiliser uniquement les colonnes nécessaires du fichier continents
+continents_mapping = df_continents[['alpha-3', 'region']].copy()
+continents_mapping.columns = ['Code', 'Continent']
+
+# Fusionner les données de population avec les continents
+df_filtered = df_filtered.merge(continents_mapping, on='Code', how='left')
 
 # Sauvegarder le résultat dans un nouveau fichier
 output_path = os.path.join(project_root, 'CSV_Dest', 'population-1900-2016.csv')
