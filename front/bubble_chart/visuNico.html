@@ -120,6 +120,21 @@
     font-weight: bold;
   }
   
+  /* Style pour les axes - fond blanc pour qu'ils soient bien visibles */
+  .x-axis path,
+  .x-axis line,
+  .y-axis path,
+  .y-axis line {
+    stroke: #333;
+    stroke-width: 1.5px;
+  }
+  
+  .x-axis text,
+  .y-axis text {
+    fill: #333;
+    font-size: 11px;
+  }
+  
   .legend {
     margin-top: 20px;
     padding: 15px;
@@ -454,7 +469,38 @@ const hideTooltip = function(event, d) {
 
 // Initialize chart elements
 function initializeChart() {
-  // Add X axis group
+  // Add bubbles group FIRST (so it's behind everything else)
+  bubblesGroup = svg.append('g')
+    .attr("class", "bubbles-group");
+  
+  // Add a white background rectangle for X axis area
+  svg.append("rect")
+    .attr("class", "x-axis-bg")
+    .attr("x", -10)
+    .attr("y", height - 2)
+    .attr("width", width + 20)
+    .attr("height", 50)
+    .attr("fill", "white");
+  
+  // Add a white background rectangle for Y axis area
+  svg.append("rect")
+    .attr("class", "y-axis-bg")
+    .attr("x", -80)
+    .attr("y", -10)
+    .attr("width", 80)
+    .attr("height", height + 20)
+    .attr("fill", "white");
+  
+  // Add a white background rectangle for the corner between axes
+  svg.append("rect")
+    .attr("class", "corner-axis-bg")
+    .attr("x", -80)
+    .attr("y", height - 2)
+    .attr("width", 80)
+    .attr("height", 50)
+    .attr("fill", "white");
+  
+  // Add X axis group (after bubbles, so it's on top)
   xAxisGroup = svg.append("g")
     .attr("class", "x-axis")
     .attr("transform", `translate(0, ${height})`);
@@ -467,7 +513,7 @@ function initializeChart() {
     .attr("y", height + 40)
     .text("Nombre de participants");
   
-  // Add Y axis group
+  // Add Y axis group (after bubbles, so it's on top)
   yAxisGroup = svg.append("g")
     .attr("class", "y-axis");
   
@@ -486,10 +532,6 @@ function initializeChart() {
     .attr("text-anchor", "middle")
     .attr("x", width / 2)
     .attr("y", -10);
-  
-  // Add bubbles group
-  bubblesGroup = svg.append('g')
-    .attr("class", "bubbles-group");
   
   // Initialize color scale
   colorScale = d3.scaleOrdinal()
