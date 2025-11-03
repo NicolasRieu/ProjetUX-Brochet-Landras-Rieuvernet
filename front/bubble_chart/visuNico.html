@@ -204,7 +204,9 @@ const svg = d3.select("#my_dataviz")
 
 // Global variables to store data
 let athleteData, populationData;
-let availableYears = [];
+let allYears = [];
+let summerYears = [];
+let winterYears = [];
 let currentSeason = "Summer";
 
 // Load both CSV files using operations.js
@@ -216,22 +218,56 @@ ops.loadData(
   populationData = loadedData.populationData;
   
   // Get unique years from athlete data
-  availableYears = ops.getAvailableYears(athleteData);
+  allYears = ops.getAvailableYears(athleteData);
+  
+  // Séparer les années par saison
+  summerYears = [...new Set(athleteData.filter(d => d.Season === "Summer").map(d => d.Year))].sort((a, b) => a - b);
+  winterYears = [...new Set(athleteData.filter(d => d.Season === "Winter").map(d => d.Year))].sort((a, b) => a - b);
   
   // Setup slider
   const yearSlider = d3.select("#yearSlider");
   const yearDisplay = d3.select("#yearDisplay");
   
-  yearSlider
-    .attr("min", d3.min(availableYears))
-    .attr("max", d3.max(availableYears))
-    .property("value", 2016);
+  // Fonction pour mettre à jour le slider selon la saison
+  function updateSliderForSeason(season) {
+    const availableYears = season === "Summer" ? summerYears : winterYears;
+    
+    if (availableYears.length === 0) {
+      console.error("No years available for season:", season);
+      return;
+    }
+    
+    const minYear = d3.min(availableYears);
+    const maxYear = d3.max(availableYears);
+    
+    yearSlider
+      .attr("min", minYear)
+      .attr("max", maxYear)
+      .property("value", maxYear);
+    
+    yearDisplay.text(maxYear);
+    
+    // Ajouter des datalist pour les années disponibles
+    let datalistId = "year-options";
+    d3.select("#" + datalistId).remove();
+    
+    const datalist = d3.select("body").append("datalist").attr("id", datalistId);
+    yearSlider.attr("list", datalistId);
+    
+    availableYears.forEach(year => {
+      datalist.append("option").attr("value", year);
+    });
+    
+    return maxYear;
+  }
   
-  yearDisplay.text(2016);
+  // Initialiser le slider pour la saison Summer
+  const initialYear = updateSliderForSeason(currentSeason);
   
   // Update chart when slider changes
   yearSlider.on("input", function() {
     const selectedYear = +this.value;
+    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
     // Find closest available year using operations.js
     const closestYear = ops.findClosestYear(availableYears, selectedYear);
     yearDisplay.text(closestYear);
@@ -247,13 +283,14 @@ ops.loadData(
     d3.select(this).classed("active", true);
     // Update current season
     currentSeason = this.dataset.season;
+    // Mettre à jour le slider pour la nouvelle saison
+    const newYear = updateSliderForSeason(currentSeason);
     // Update chart
-    const currentYear = +yearDisplay.text();
-    updateChart(currentYear, currentSeason);
+    updateChart(newYear, currentSeason);
   });
   
   // Initial chart render
-  updateChart(2016, currentSeason);
+  updateChart(initialYear, currentSeason);
 }).catch(function(error) {
   console.error("Error loading files:", error);
   document.getElementById("my_dataviz").innerHTML = 
