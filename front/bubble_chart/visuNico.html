@@ -6,6 +6,8 @@
 
 <!-- Load d3.js -->
 <script src="https://d3js.org/d3.v6.js"></script>
+<!-- Load Flag Icons CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/css/flag-icons.min.css"/>
 
 <style>
   body {
@@ -100,13 +102,13 @@
   }
   
   .bubbles {
-    stroke-width: 0.5px;
-    stroke: white;
-    opacity: 0.7;
+    opacity: 1;
+    cursor: pointer;
   }
   
   .bubbles:hover {
-    stroke: black;
+    stroke: black !important;
+    stroke-width: 3px !important;
     opacity: 1;
   }
   
@@ -253,6 +255,59 @@ let currentSeason = "Summer";
 let xScale, yScale, zScale, colorScale;
 let xAxisGroup, yAxisGroup, titleElement, bubblesGroup;
 let tooltip;
+
+// Mapping NOC (Olympic codes) to ISO 3166-1 alpha-2 (flag codes)
+const nocToIso2 = {
+  "AFG": "af", "AHO": "an", "ALB": "al", "ALG": "dz", "AND": "ad", 
+  "ANG": "ao", "ANT": "ag", "ARG": "ar", "ARM": "am", "ARU": "aw",
+  "ASA": "as", "AUS": "au", "AUT": "at", "AZE": "az", "BAH": "bs",
+  "BAN": "bd", "BAR": "bb", "BDI": "bi", "BEL": "be", "BEN": "bj",
+  "BER": "bm", "BHU": "bt", "BIH": "ba", "BIZ": "bz", "BLR": "by",
+  "BOL": "bo", "BOT": "bw", "BRA": "br", "BRN": "bn", "BRU": "bn",
+  "BUL": "bg", "BUR": "bf", "CAF": "cf", "CAM": "kh", "CAN": "ca",
+  "CAY": "ky", "CGO": "cg", "CHA": "td", "CHI": "cl", "CHN": "cn",
+  "CIV": "ci", "CMR": "cm", "COD": "cd", "COK": "ck", "COL": "co",
+  "COM": "km", "CPV": "cv", "CRC": "cr", "CRO": "hr", "CUB": "cu",
+  "CYP": "cy", "CZE": "cz", "DEN": "dk", "DJI": "dj", "DMA": "dm",
+  "DOM": "do", "ECU": "ec", "EGY": "eg", "ERI": "er", "ESA": "sv",
+  "ESP": "es", "EST": "ee", "ETH": "et", "FIJ": "fj", "FIN": "fi",
+  "FRA": "fr", "FSM": "fm", "GAB": "ga", "GAM": "gm", "GBR": "gb",
+  "GBS": "gw", "GEO": "ge", "GEQ": "gq", "GER": "de", "GHA": "gh",
+  "GRE": "gr", "GRN": "gd", "GUA": "gt", "GUI": "gn", "GUM": "gu",
+  "GUY": "gy", "HAI": "ht", "HKG": "hk", "HON": "hn", "HUN": "hu",
+  "INA": "id", "IND": "in", "IRI": "ir", "IRL": "ie", "IRQ": "iq",
+  "ISL": "is", "ISR": "il", "ISV": "vi", "ITA": "it", "IVB": "vg",
+  "JAM": "jm", "JOR": "jo", "JPN": "jp", "KAZ": "kz", "KEN": "ke",
+  "KGZ": "kg", "KIR": "ki", "KOR": "kr", "KSA": "sa", "KUW": "kw",
+  "LAO": "la", "LAT": "lv", "LBA": "ly", "LBR": "lr", "LCA": "lc",
+  "LES": "ls", "LIB": "lb", "LIE": "li", "LTU": "lt", "LUX": "lu",
+  "MAD": "mg", "MAR": "ma", "MAS": "my", "MAW": "mw", "MDA": "md",
+  "MDV": "mv", "MEX": "mx", "MGL": "mn", "MHL": "mh", "MKD": "mk",
+  "MLI": "ml", "MLT": "mt", "MNE": "me", "MON": "mc", "MOZ": "mz",
+  "MRI": "mu", "MTN": "mr", "MYA": "mm", "NAM": "na", "NCA": "ni",
+  "NED": "nl", "NEP": "np", "NGR": "ng", "NIG": "ne", "NOR": "no",
+  "NRU": "nr", "NZL": "nz", "OMA": "om", "PAK": "pk", "PAN": "pa",
+  "PAR": "py", "PER": "pe", "PHI": "ph", "PLE": "ps", "PLW": "pw",
+  "PNG": "pg", "POL": "pl", "POR": "pt", "PRK": "kp", "PUR": "pr",
+  "QAT": "qa", "ROU": "ro", "RSA": "za", "RUS": "ru", "RWA": "rw",
+  "SAM": "ws", "SEN": "sn", "SEY": "sc", "SIN": "sg", "SKN": "kn",
+  "SLE": "sl", "SLO": "si", "SMR": "sm", "SOL": "sb", "SOM": "so",
+  "SRB": "rs", "SRI": "lk", "STP": "st", "SUD": "sd", "SUI": "ch",
+  "SUR": "sr", "SVK": "sk", "SWE": "se", "SWZ": "sz", "SYR": "sy",
+  "TAN": "tz", "TGA": "to", "THA": "th", "TJK": "tj", "TKM": "tm",
+  "TLS": "tl", "TOG": "tg", "TPE": "tw", "TTO": "tt", "TUN": "tn",
+  "TUR": "tr", "TUV": "tv", "UAE": "ae", "UGA": "ug", "UKR": "ua",
+  "URU": "uy", "USA": "us", "UZB": "uz", "VAN": "vu", "VEN": "ve",
+  "VIE": "vn", "VIN": "vc", "YEM": "ye", "ZAM": "zm", "ZIM": "zw",
+  // Codes historiques
+  "TCH": "cz", "URS": "ru", "FRG": "de", "GDR": "de", "YUG": "rs",
+  "SCG": "rs", "EUN": "ru", "BOH": "cz"
+};
+
+// Function to convert NOC to ISO2 for flags
+function getNocFlag(noc) {
+  return nocToIso2[noc] || noc.toLowerCase().substring(0, 2);
+}
 
 // Variables pour les échelles fixes (calculées une fois pour toute la saison)
 let globalMaxParticipants = {Summer: 0, Winter: 0};
@@ -469,6 +524,9 @@ const hideTooltip = function(event, d) {
 
 // Initialize chart elements
 function initializeChart() {
+  // Create a defs section for patterns
+  const defs = svg.append("defs");
+  
   // Add bubbles group FIRST (so it's behind everything else)
   bubblesGroup = svg.append('g')
     .attr("class", "bubbles-group");
@@ -539,6 +597,33 @@ function initializeChart() {
     .range(["#9b59b6", "#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#95a5a6"]);
 }
 
+// Function to create or update flag patterns
+function createFlagPattern(noc) {
+  const patternId = `flag-${noc}`;
+  const iso2 = getNocFlag(noc);
+  
+  // Check if pattern already exists
+  if (svg.select(`#${patternId}`).empty()) {
+    const defs = svg.select("defs");
+    const pattern = defs.append("pattern")
+      .attr("id", patternId)
+      .attr("width", 1)
+      .attr("height", 1)
+      .attr("patternContentUnits", "objectBoundingBox");
+    
+    // Add the flag image - use a larger viewBox to ensure proper cropping
+    pattern.append("image")
+      .attr("href", `https://flagcdn.com/${iso2}.svg`)
+      .attr("x", -0.25)
+      .attr("y", -0.25)
+      .attr("width", 1.5)
+      .attr("height", 1.5)
+      .attr("preserveAspectRatio", "xMidYMid slice");
+  }
+  
+  return `url(#${patternId})`;
+}
+
 function updateChart(selectedYear, season) {
   // Utilisation des fonctions de operations.js pour préparer les données
   const chartData = ops.prepareChartData(athleteData, populationData, selectedYear, season);
@@ -560,6 +645,11 @@ function updateChart(selectedYear, season) {
   if (!xAxisGroup) {
     initializeChart();
   }
+  
+  // Create flag patterns for all countries in the data
+  combinedData.forEach(d => {
+    createFlagPattern(d.noc);
+  });
   
   // Utiliser les échelles globales fixes pour la saison
   xScale = d3.scaleLinear()
@@ -611,7 +701,9 @@ function updateChart(selectedYear, season) {
     .attr("cx", d => xScale(d.participants))
     .attr("cy", d => yScale(d.medals))
     .attr("r", 0)
-    .style("fill", d => colorScale(d.continent))
+    .style("fill", d => `url(#flag-${d.noc})`)
+    .style("stroke", d => colorScale(d.continent))
+    .style("stroke-width", "2px")
     .style("opacity", 0);
   
   // Update + Enter: transition all bubbles to new positions and sizes
@@ -624,8 +716,10 @@ function updateChart(selectedYear, season) {
     .attr("cx", d => xScale(d.participants))
     .attr("cy", d => yScale(d.medals))
     .attr("r", d => zScale(d.population))
-    .style("fill", d => colorScale(d.continent))
-    .style("opacity", 0.7);
+    .style("fill", d => `url(#flag-${d.noc})`)
+    .style("stroke", d => colorScale(d.continent))
+    .style("stroke-width", "2px")
+    .style("opacity", 1);
 }
 
 </script>
