@@ -154,8 +154,30 @@
   .legend-item {
     display: inline-flex;
     align-items: center;
-    margin-right: 20px;
-    margin-bottom: 5px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    padding: 8px 15px;
+    border: 2px solid #ddd;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    background-color: white;
+  }
+  
+  .legend-item:hover {
+    background-color: #f0f0f0;
+    transform: scale(1.05);
+  }
+  
+  .legend-item.active {
+    border-color: #333;
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  .legend-item.inactive {
+    opacity: 0.4;
+    background-color: #e0e0e0;
   }
   
   .legend-color {
@@ -168,6 +190,7 @@
   
   .legend-label {
     font-size: 13px;
+    font-weight: 500;
   }
 </style>
 </head>
@@ -199,27 +222,27 @@
 <!-- Create a div where the graph will take place -->
 <div id="my_dataviz"></div>
 
-<!-- Legend for continents -->
+<!-- Legend for continents - now interactive filters -->
 <div class="legend">
-  <div class="legend-title">Légende - Continents:</div>
+  <div class="legend-title">Filtrer par Continent (cliquez pour activer/désactiver) :</div>
   <div style="display: flex; flex-wrap: wrap;">
-    <div class="legend-item">
+    <div class="legend-item active" data-continent="Africa">
       <div class="legend-color" style="background-color: #e74c3c;"></div>
       <span class="legend-label">Africa</span>
     </div>
-    <div class="legend-item">
+    <div class="legend-item active" data-continent="Americas">
       <div class="legend-color" style="background-color: #3498db;"></div>
       <span class="legend-label">Americas</span>
     </div>
-    <div class="legend-item">
+    <div class="legend-item active" data-continent="Asia">
       <div class="legend-color" style="background-color: #f39c12;"></div>
       <span class="legend-label">Asia</span>
     </div>
-    <div class="legend-item">
+    <div class="legend-item active" data-continent="Europe">
       <div class="legend-color" style="background-color: #2ecc71;"></div>
       <span class="legend-label">Europe</span>
     </div>
-    <div class="legend-item">
+    <div class="legend-item active" data-continent="Oceania">
       <div class="legend-color" style="background-color: #9b59b6;"></div>
       <span class="legend-label">Oceania</span>
     </div>
@@ -255,6 +278,14 @@ let currentSeason = "Summer";
 let xScale, yScale, zScale, colorScale;
 let xAxisGroup, yAxisGroup, titleElement, bubblesGroup;
 let tooltip;
+
+// Filtres actifs pour les continents (tous actifs par défaut)
+let activeContinents = new Set(["Africa", "Americas", "Asia", "Europe", "Oceania"]);
+
+// Échelles calculées selon les filtres de continents actifs
+let filteredMaxParticipants = {Summer: 0, Winter: 0};
+let filteredMaxPopulation = {Summer: 0, Winter: 0};
+let filteredMaxMedals = {Summer: 0, Winter: 0};
 
 // Mapping NOC (Olympic codes) to ISO 3166-1 alpha-2 (flag codes)
 const nocToIso2 = {
@@ -307,6 +338,37 @@ const nocToIso2 = {
 // Function to convert NOC to ISO2 for flags
 function getNocFlag(noc) {
   return nocToIso2[noc] || noc.toLowerCase().substring(0, 2);
+}
+
+// Fonction pour recalculer les échelles basées sur les continents actifs
+function recalculateScalesForFilters(season) {
+  const seasonYears = season === "Summer" ? summerYears : winterYears;
+  
+  filteredMaxParticipants[season] = 0;
+  filteredMaxPopulation[season] = 0;
+  filteredMaxMedals[season] = 0;
+  
+  seasonYears.forEach(year => {
+    const chartData = ops.prepareChartData(athleteData, populationData, year, season);
+    // Filtrer par continents actifs
+    const filteredData = chartData.data.filter(d => activeContinents.has(d.continent));
+    
+    if (filteredData.length > 0) {
+      const maxParticipants = d3.max(filteredData, d => d.participants);
+      const maxPopulation = d3.max(filteredData, d => d.population);
+      const maxMedals = d3.max(filteredData, d => d.medals);
+      
+      if (maxParticipants > filteredMaxParticipants[season]) {
+        filteredMaxParticipants[season] = maxParticipants;
+      }
+      if (maxPopulation > filteredMaxPopulation[season]) {
+        filteredMaxPopulation[season] = maxPopulation;
+      }
+      if (maxMedals > filteredMaxMedals[season]) {
+        filteredMaxMedals[season] = maxMedals;
+      }
+    }
+  });
 }
 
 // Variables pour les échelles fixes (calculées une fois pour toute la saison)
@@ -473,6 +535,28 @@ ops.loadData(
     updateNavigationButtons();
   });
   
+  // Setup continent filter buttons
+  const continentButtons = d3.selectAll(".legend-item");
+  continentButtons.on("click", function() {
+    const continent = this.dataset.continent;
+    
+    // Toggle the continent in the active set
+    if (activeContinents.has(continent)) {
+      activeContinents.delete(continent);
+      d3.select(this).classed("active", false).classed("inactive", true);
+    } else {
+      activeContinents.add(continent);
+      d3.select(this).classed("active", true).classed("inactive", false);
+    }
+    
+    // Recalculer les échelles pour la saison courante avec les nouveaux filtres
+    recalculateScalesForFilters(currentSeason);
+    
+    // Update the chart with current year and season
+    const currentYear = +yearSlider.property("value");
+    updateChart(currentYear, currentSeason);
+  });
+  
   // Créer le tooltip une seule fois
   tooltip = d3.select("body")
     .append("div")
@@ -484,6 +568,10 @@ ops.loadData(
       .style("padding", "10px")
       .style("color", "white")
       .style("pointer-events", "none");
+  
+  // Calculer les échelles initiales avec tous les continents actifs
+  recalculateScalesForFilters("Summer");
+  recalculateScalesForFilters("Winter");
   
   // Initial chart render
   updateChart(initialYear, currentSeason);
@@ -627,23 +715,37 @@ function createFlagPattern(noc) {
 function updateChart(selectedYear, season) {
   // Utilisation des fonctions de operations.js pour préparer les données
   const chartData = ops.prepareChartData(athleteData, populationData, selectedYear, season);
-  const combinedData = chartData.data;
+  let combinedData = chartData.data;
   
-  // Vérifier s'il y a des données
-  if (combinedData.length === 0) {
-    svg.selectAll("*").remove();
-    svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", height / 2)
-      .attr("text-anchor", "middle")
-      .style("font-size", "16px")
-      .text(`Aucune donnée disponible pour ${season} ${selectedYear}`);
-    return;
-  }
+  // Filtrer les données selon les continents actifs
+  combinedData = combinedData.filter(d => activeContinents.has(d.continent));
   
   // Initialize chart elements if not already done
   if (!xAxisGroup) {
     initializeChart();
+  }
+  
+  // Vérifier s'il y a des données
+  if (combinedData.length === 0) {
+    // Cacher les bulles mais garder le graphique
+    bubblesGroup.selectAll("circle").remove();
+    
+    // Afficher un message
+    let noDataText = svg.select(".no-data-text");
+    if (noDataText.empty()) {
+      noDataText = svg.append("text")
+        .attr("class", "no-data-text")
+        .attr("x", width / 2)
+        .attr("y", height / 2)
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("fill", "#666");
+    }
+    noDataText.text(`Aucune donnée disponible pour les continents sélectionnés`);
+    return;
+  } else {
+    // Supprimer le message "no data" s'il existe
+    svg.select(".no-data-text").remove();
   }
   
   // Create flag patterns for all countries in the data
@@ -651,17 +753,17 @@ function updateChart(selectedYear, season) {
     createFlagPattern(d.noc);
   });
   
-  // Utiliser les échelles globales fixes pour la saison
+  // Utiliser les échelles calculées pour la saison avec les filtres actifs
   xScale = d3.scaleLinear()
-    .domain([0, globalMaxParticipants[season] * 1.1])
+    .domain([0, filteredMaxParticipants[season] * 1.1])
     .range([0, width]);
   
   yScale = d3.scaleLinear()
-    .domain([0, globalMaxMedals[season] * 1.1])
+    .domain([0, filteredMaxMedals[season] * 1.1])
     .range([height, 0]);
   
   zScale = d3.scaleSqrt()
-    .domain([0, globalMaxPopulation[season]])
+    .domain([0, filteredMaxPopulation[season]])
     .range([5, 50]);
   
   // Update axes with transition
@@ -712,7 +814,7 @@ function updateChart(selectedYear, season) {
     .on("mousemove", moveTooltip)
     .on("mouseleave", hideTooltip)
     .transition()
-    .duration(750)
+    .duration(400)
     .attr("cx", d => xScale(d.participants))
     .attr("cy", d => yScale(d.medals))
     .attr("r", d => zScale(d.population))
