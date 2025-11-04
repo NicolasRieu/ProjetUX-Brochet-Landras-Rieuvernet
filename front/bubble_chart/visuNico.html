@@ -560,14 +560,20 @@ ops.loadData(
   // Créer le tooltip une seule fois
   tooltip = d3.select("body")
     .append("div")
-      .style("opacity", 0)
       .attr("class", "tooltip")
       .style("position", "absolute")
-      .style("background-color", "black")
-      .style("border-radius", "5px")
-      .style("padding", "10px")
+      .style("visibility", "hidden")
+      .style("opacity", 0)
+      .style("background-color", "rgba(0, 0, 0, 0.85)")
+      .style("border-radius", "8px")
+      .style("padding", "12px 16px")
       .style("color", "white")
-      .style("pointer-events", "none");
+      .style("font-size", "14px")
+      .style("line-height", "1.6")
+      .style("pointer-events", "none")
+      .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.3)")
+      .style("z-index", "1000")
+      .style("max-width", "250px");
   
   // Calculer les échelles initiales avec tous les continents actifs
   recalculateScalesForFilters("Summer");
@@ -584,17 +590,36 @@ ops.loadData(
 
 // Create 3 functions to show / update / hide the tooltip
 const showTooltip = function(event, d) {
-  tooltip
-    .transition()
-    .duration(200);
+  // Annuler toutes les transitions en cours pour éviter les conflits
+  tooltip.interrupt();
+  
+  // Formater les nombres pour meilleure lisibilité
+  const formattedPopulation = d3.format(",")(Math.round(d.population));
+  const formattedParticipants = d3.format(",")(d.participants);
+  const formattedMedals = d3.format(",")(d.medals);
+  
   tooltip
     .style("opacity", 1)
-    .html(`<strong>${d.noc}</strong> (${d.continent})<br/>
-           Participants: ${d.participants}<br/>
-           Médailles: ${d.medals}<br/>
-           Population: ${d3.format(",")(Math.round(d.population))}`)
+    .html(`
+      <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 6px;">
+        ${d.noc}
+      </div>
+      <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-bottom: 6px;">
+        ${d.continent}
+      </div>
+      <div style="margin-top: 4px;">
+        <strong>👥 Participants:</strong> ${formattedParticipants}
+      </div>
+      <div style="margin-top: 4px;">
+        <strong>🏅 Médailles:</strong> ${formattedMedals}
+      </div>
+      <div style="margin-top: 4px;">
+        <strong>🌍 Population:</strong> ${formattedPopulation}
+      </div>
+    `)
     .style("left", (event.pageX + 15) + "px")
-    .style("top", (event.pageY - 28) + "px");
+    .style("top", (event.pageY - 28) + "px")
+    .style("visibility", "visible");
 }
 
 const moveTooltip = function(event, d) {
@@ -604,10 +629,17 @@ const moveTooltip = function(event, d) {
 }
 
 const hideTooltip = function(event, d) {
+  // Annuler toutes les transitions en cours
+  tooltip.interrupt();
+  
   tooltip
     .transition()
-    .duration(200)
-    .style("opacity", 0);
+    .duration(300)
+    .style("opacity", 0)
+    .on("end", function() {
+      // Cacher complètement le tooltip après la transition
+      d3.select(this).style("visibility", "hidden");
+    });
 }
 
 // Initialize chart elements
