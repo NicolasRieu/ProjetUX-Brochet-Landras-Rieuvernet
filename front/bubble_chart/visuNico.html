@@ -192,6 +192,14 @@
     font-size: 13px;
     font-weight: 500;
   }
+  
+  .zoom-rect {
+    cursor: grab;
+  }
+  
+  .zoom-rect:active {
+    cursor: grabbing;
+  }
 </style>
 </head>
 <body>
@@ -260,10 +268,21 @@ const margin = {top: 100, right: 20, bottom: 60, left: 80},
     height = 600 - margin.top - margin.bottom;
 
 // append the svg object to the body of the page
-const svg = d3.select("#my_dataviz")
+const svgContainer = d3.select("#my_dataviz")
   .append("svg")
     .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
+    .attr("height", height + margin.top + margin.bottom);
+
+// Define clip path to prevent bubbles from overflowing the chart area
+svgContainer.append("defs").append("clipPath")
+  .attr("id", "chart-area-clip")
+  .append("rect")
+  .attr("x", 0)
+  .attr("y", 0)
+  .attr("width", width)
+  .attr("height", height);
+
+const svg = svgContainer
   .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -278,6 +297,9 @@ let currentSeason = "Summer";
 let xScale, yScale, zScale, colorScale;
 let xAxisGroup, yAxisGroup, titleElement, bubblesGroup;
 let tooltip;
+
+// Variables pour le zoom
+let currentZoomTransform = d3.zoomIdentity;
 
 // Filtres actifs pour les continents (tous actifs par défaut)
 let activeContinents = new Set(["Africa", "Americas", "Asia", "Europe", "Oceania"]);
@@ -649,7 +671,8 @@ function initializeChart() {
   
   // Add bubbles group FIRST (so it's behind everything else)
   bubblesGroup = svg.append('g')
-    .attr("class", "bubbles-group");
+    .attr("class", "bubbles-group")
+    .attr("clip-path", "url(#chart-area-clip)");
   
   // Add a white background rectangle for X axis area
   svg.append("rect")
@@ -715,6 +738,141 @@ function initializeChart() {
   colorScale = d3.scaleOrdinal()
     .domain(["Africa", "Americas", "Asia", "Europe", "Oceania", "Unknown"])
     .range(["#9b59b6", "#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#95a5a6"]);
+  
+  // Add white masks to hide bubbles that overflow outside the chart area
+  // These rectangles are added to svgContainer (not svg) so they stay fixed during zoom
+  
+  // Top-left corner mask (above Y-axis)
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-top-left")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("width", margin.left)
+    .attr("height", margin.top)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Top mask (above the chart)
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-top")
+    .attr("x", margin.left)
+    .attr("y", 0)
+    .attr("width", width)
+    .attr("height", margin.top)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Top-right corner mask
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-top-right")
+    .attr("x", margin.left + width)
+    .attr("y", 0)
+    .attr("width", margin.right)
+    .attr("height", margin.top)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Right mask (right of the chart)
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-right")
+    .attr("x", margin.left + width)
+    .attr("y", margin.top)
+    .attr("width", margin.right)
+    .attr("height", height)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Bottom-right corner mask
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-bottom-right")
+    .attr("x", margin.left + width)
+    .attr("y", margin.top + height)
+    .attr("width", margin.right)
+    .attr("height", margin.bottom)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Bottom mask (below X-axis, but positioned to not cover the axis labels)
+  // Covers from after the axis line to the bottom
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-bottom")
+    .attr("x", margin.left)
+    .attr("y", margin.top + height + 48)
+    .attr("width", width)
+    .attr("height", margin.bottom - 48)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Bottom-left corner mask
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-bottom-left")
+    .attr("x", 0)
+    .attr("y", margin.top + height)
+    .attr("width", margin.left)
+    .attr("height", margin.bottom)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Setup zoom behavior
+  setupZoom();
+}
+
+// Setup zoom and pan functionality
+let zoomBehavior;
+
+function setupZoom() {
+  // Create zoom behavior
+  zoomBehavior = d3.zoom()
+    .scaleExtent([1, 100])  // Limite: zoom min 1x (normal), zoom max 100x
+    .extent([[0, 0], [width, height]])
+    .translateExtent([[0, 0], [width, height]])  // Empêche de sortir des limites du graphique
+    .on("zoom", zoomed);
+  
+  // Create an invisible rectangle to capture zoom/pan events on the chart area
+  const zoomRect = svg.append("rect")
+    .attr("class", "zoom-rect")
+    .attr("width", width)
+    .attr("height", height)
+    .style("fill", "none")
+    .style("pointer-events", "all")
+    .style("cursor", "grab")
+    .on("mousedown", function() {
+      d3.select(this).style("cursor", "grabbing");
+    })
+    .on("mouseup", function() {
+      d3.select(this).style("cursor", "grab");
+    })
+    .call(zoomBehavior);
+  
+  // Move zoom rect behind bubbles but in front of backgrounds
+  svg.select(".bubbles-group").raise();
+  svg.selectAll(".x-axis-bg, .y-axis-bg, .corner-axis-bg").raise();
+  svg.select(".x-axis").raise();
+  svg.select(".y-axis").raise();
+  
+  function zoomed(event) {
+    currentZoomTransform = event.transform;
+    
+    // Apply transform to bubbles
+    bubblesGroup.attr("transform", event.transform);
+    
+    // Update axes with rescaled domains
+    const newXScale = event.transform.rescaleX(xScale);
+    const newYScale = event.transform.rescaleY(yScale);
+    
+    xAxisGroup.call(d3.axisBottom(newXScale));
+    yAxisGroup.call(d3.axisLeft(newYScale));
+  }
+}
+
+// Reset zoom to identity (no zoom)
+function resetZoom() {
+  if (zoomBehavior) {
+    svg.select(".zoom-rect")
+      .transition()
+      .duration(750)
+      .call(zoomBehavior.transform, d3.zoomIdentity);
+  }
 }
 
 // Function to create or update flag patterns
@@ -797,6 +955,9 @@ function updateChart(selectedYear, season) {
   zScale = d3.scaleSqrt()
     .domain([0, filteredMaxPopulation[season]])
     .range([5, 50]);
+  
+  // Reset zoom when changing data
+  resetZoom();
   
   // Update axes with transition
   xAxisGroup.transition()
