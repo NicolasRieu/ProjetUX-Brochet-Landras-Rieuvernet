@@ -34,6 +34,9 @@ continents_mapping.columns = ['Code', 'Continent']
 # Fusionner les données de population avec les continents
 df_filtered = df_filtered.merge(continents_mapping, on='Code', how='left')
 
+# Rajouter le continent Europe pour le Kosovo code KOS
+df_filtered.loc[df_filtered['Code'] == 'KOS', 'Continent'] = 'Europe'
+
 # Sauvegarder le résultat dans un nouveau fichier
 output_path = os.path.join(project_root, 'CSV_Dest', 'population-1900-2016.csv')
 os.makedirs(os.path.dirname(output_path), exist_ok=True)

@@ -5,14 +5,33 @@
 <script src="https://d3js.org/d3.v6.js"></script>
 
 <!-- Create an element where the map will take place -->
-<svg id="my_dataviz" width="400" height="300"></svg>
+<svg id="my_dataviz" width="960" height="600"></svg>
 
 <html lang="en">
   <head><meta charset="utf-8">
   <title>Choropleth map</title></head>
+  <div class="controls">
+  <div class="control-row">
+    <label for="yearSlider">Année:</label>
+    <div class="slider-container">
+      <input type="range" id="yearSlider" min="1896" max="2016" value="2016" step="2">
+      <span id="yearDisplay">2016</span>
+    </div>
+  </div>
+  
+  <div class="control-row">
+    <label>Saison:</label>
+    <div class="season-buttons">
+      <button class="season-btn active" data-season="Summer">Été (Summer)</button>
+      <button class="season-btn" data-season="Winter">Hiver (Winter)</button>
+    </div>
+  </div>
+</div>
   <body>
     <script src="https://d3js.org/d3.v6.js"></script>
-    <svg id="my_dataviz" width="400" height="300"></svg>
+    <svg id="my_dataviz" width="960" height="600"></svg>
     <script src="map.js"></script>
+
+    
   </body>
 </html>

@@ -6,6 +6,8 @@
 
 <!-- Load d3.js -->
 <script src="https://d3js.org/d3.v6.js"></script>
+<!-- Load Flag Icons CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/css/flag-icons.min.css"/>
 
 <style>
   body {
@@ -50,6 +52,29 @@
     min-width: 50px;
   }
   
+  .nav-btn {
+    padding: 8px 15px;
+    font-size: 18px;
+    font-weight: bold;
+    border: 2px solid #333;
+    border-radius: 5px;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 45px;
+  }
+  
+  .nav-btn:hover:not(:disabled) {
+    background-color: #4CAF50;
+    color: white;
+    border-color: #4CAF50;
+  }
+  
+  .nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  
   .season-buttons {
     display: flex;
     gap: 10px;
@@ -77,13 +102,13 @@
   }
   
   .bubbles {
-    stroke-width: 2px;
-    stroke: white;
-    opacity: 0.7;
+    opacity: 1;
+    cursor: pointer;
   }
   
   .bubbles:hover {
-    stroke: black;
+    stroke: black !important;
+    stroke-width: 3px !important;
     opacity: 1;
   }
   
@@ -96,6 +121,85 @@
     font-size: 18px;
     font-weight: bold;
   }
+  
+  /* Style pour les axes - fond blanc pour qu'ils soient bien visibles */
+  .x-axis path,
+  .x-axis line,
+  .y-axis path,
+  .y-axis line {
+    stroke: #333;
+    stroke-width: 1.5px;
+  }
+  
+  .x-axis text,
+  .y-axis text {
+    fill: #333;
+    font-size: 11px;
+  }
+  
+  .legend {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    display: inline-block;
+  }
+  
+  .legend-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+  
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    padding: 8px 15px;
+    border: 2px solid #ddd;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    background-color: white;
+  }
+  
+  .legend-item:hover {
+    background-color: #f0f0f0;
+    transform: scale(1.05);
+  }
+  
+  .legend-item.active {
+    border-color: #333;
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  .legend-item.inactive {
+    opacity: 0.4;
+    background-color: #e0e0e0;
+  }
+  
+  .legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 2px solid white;
+  }
+  
+  .legend-label {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  
+  .zoom-rect {
+    cursor: grab;
+  }
+  
+  .zoom-rect:active {
+    cursor: grabbing;
+  }
 </style>
 </head>
 <body>
@@ -107,7 +211,9 @@
   <div class="control-row">
     <label for="yearSlider">Année:</label>
     <div class="slider-container">
+      <button class="nav-btn" id="prevBtn">◀</button>
       <input type="range" id="yearSlider" min="1896" max="2016" value="2016" step="2">
+      <button class="nav-btn" id="nextBtn">▶</button>
       <span id="yearDisplay">2016</span>
     </div>
   </div>
@@ -124,7 +230,37 @@
 <!-- Create a div where the graph will take place -->
 <div id="my_dataviz"></div>
 
-<script>
+<!-- Legend for continents - now interactive filters -->
+<div class="legend">
+  <div class="legend-title">Filtrer par Continent (cliquez pour activer/désactiver) :</div>
+  <div style="display: flex; flex-wrap: wrap;">
+    <div class="legend-item active" data-continent="Africa">
+      <div class="legend-color" style="background-color: #e74c3c;"></div>
+      <span class="legend-label">Africa</span>
+    </div>
+    <div class="legend-item active" data-continent="Americas">
+      <div class="legend-color" style="background-color: #3498db;"></div>
+      <span class="legend-label">Americas</span>
+    </div>
+    <div class="legend-item active" data-continent="Asia">
+      <div class="legend-color" style="background-color: #f39c12;"></div>
+      <span class="legend-label">Asia</span>
+    </div>
+    <div class="legend-item active" data-continent="Europe">
+      <div class="legend-color" style="background-color: #2ecc71;"></div>
+      <span class="legend-label">Europe</span>
+    </div>
+    <div class="legend-item active" data-continent="Oceania">
+      <div class="legend-color" style="background-color: #9b59b6;"></div>
+      <span class="legend-label">Oceania</span>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+
+// Import des fonctions depuis operations.js
+import * as ops from '../utils/operations.js';
 
 // set the dimensions and margins of the graph
 const margin = {top: 100, right: 20, bottom: 60, left: 80},
@@ -132,67 +268,277 @@ const margin = {top: 100, right: 20, bottom: 60, left: 80},
     height = 600 - margin.top - margin.bottom;
 
 // append the svg object to the body of the page
-const svg = d3.select("#my_dataviz")
+const svgContainer = d3.select("#my_dataviz")
   .append("svg")
     .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
+    .attr("height", height + margin.top + margin.bottom);
+
+// Define clip path to prevent bubbles from overflowing the chart area
+svgContainer.append("defs").append("clipPath")
+  .attr("id", "chart-area-clip")
+  .append("rect")
+  .attr("x", 0)
+  .attr("y", 0)
+  .attr("width", width)
+  .attr("height", height);
+
+const svg = svgContainer
   .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
 // Global variables to store data
 let athleteData, populationData;
-let availableYears = [];
+let allYears = [];
+let summerYears = [];
+let winterYears = [];
 let currentSeason = "Summer";
 
-// Load both CSV files
-Promise.all([
-  d3.text("../../CSV_Dest/athlete_events_opti.csv"),
-  d3.csv("../../CSV_Dest/population-1900-2016.csv")
-]).then(function(files) {
-  // Parse the athlete data with semicolon delimiter
-  const athleteText = files[0];
-  athleteData = d3.dsvFormat(";").parse(athleteText, d => {
-    return {
-      ID: d.ID,
-      Name: d.Name,
-      Sex: d.Sex,
-      Team: d.Team,
-      NOC: d.NOC,
-      Games: d.Games,
-      Year: +d.Year,
-      Season: d.Season,
-      Sport: d.Sport,
-      Event: d.Event,
-      Medal: d.Medal
-    };
-  });
+// Variables globales pour les échelles et éléments du graphique
+let xScale, yScale, zScale, colorScale;
+let xAxisGroup, yAxisGroup, titleElement, bubblesGroup;
+let tooltip;
+
+// Variables pour le zoom
+let currentZoomTransform = d3.zoomIdentity;
+
+// Filtres actifs pour les continents (tous actifs par défaut)
+let activeContinents = new Set(["Africa", "Americas", "Asia", "Europe", "Oceania"]);
+
+// Échelles calculées selon les filtres de continents actifs
+let filteredMaxParticipants = {Summer: 0, Winter: 0};
+let filteredMaxPopulation = {Summer: 0, Winter: 0};
+let filteredMaxMedals = {Summer: 0, Winter: 0};
+
+// Mapping NOC (Olympic codes) to ISO 3166-1 alpha-2 (flag codes)
+const nocToIso2 = {
+  "AFG": "af", "AHO": "an", "ALB": "al", "ALG": "dz", "AND": "ad", 
+  "ANG": "ao", "ANT": "ag", "ARG": "ar", "ARM": "am", "ARU": "aw",
+  "ASA": "as", "AUS": "au", "AUT": "at", "AZE": "az", "BAH": "bs",
+  "BAN": "bd", "BAR": "bb", "BDI": "bi", "BEL": "be", "BEN": "bj",
+  "BER": "bm", "BHU": "bt", "BIH": "ba", "BIZ": "bz", "BLR": "by",
+  "BOL": "bo", "BOT": "bw", "BRA": "br", "BRN": "bn", "BRU": "bn",
+  "BUL": "bg", "BUR": "bf", "CAF": "cf", "CAM": "kh", "CAN": "ca",
+  "CAY": "ky", "CGO": "cg", "CHA": "td", "CHI": "cl", "CHN": "cn",
+  "CIV": "ci", "CMR": "cm", "COD": "cd", "COK": "ck", "COL": "co",
+  "COM": "km", "CPV": "cv", "CRC": "cr", "CRO": "hr", "CUB": "cu",
+  "CYP": "cy", "CZE": "cz", "DEN": "dk", "DJI": "dj", "DMA": "dm",
+  "DOM": "do", "ECU": "ec", "EGY": "eg", "ERI": "er", "ESA": "sv",
+  "ESP": "es", "EST": "ee", "ETH": "et", "FIJ": "fj", "FIN": "fi",
+  "FRA": "fr", "FSM": "fm", "GAB": "ga", "GAM": "gm", "GBR": "gb",
+  "GBS": "gw", "GEO": "ge", "GEQ": "gq", "GER": "de", "GHA": "gh",
+  "GRE": "gr", "GRN": "gd", "GUA": "gt", "GUI": "gn", "GUM": "gu",
+  "GUY": "gy", "HAI": "ht", "HKG": "hk", "HON": "hn", "HUN": "hu",
+  "INA": "id", "IND": "in", "IRI": "ir", "IRL": "ie", "IRQ": "iq",
+  "ISL": "is", "ISR": "il", "ISV": "vi", "ITA": "it", "IVB": "vg",
+  "JAM": "jm", "JOR": "jo", "JPN": "jp", "KAZ": "kz", "KEN": "ke",
+  "KGZ": "kg", "KIR": "ki", "KOR": "kr", "KSA": "sa", "KUW": "kw",
+  "LAO": "la", "LAT": "lv", "LBA": "ly", "LBR": "lr", "LCA": "lc",
+  "LES": "ls", "LIB": "lb", "LIE": "li", "LTU": "lt", "LUX": "lu",
+  "MAD": "mg", "MAR": "ma", "MAS": "my", "MAW": "mw", "MDA": "md",
+  "MDV": "mv", "MEX": "mx", "MGL": "mn", "MHL": "mh", "MKD": "mk",
+  "MLI": "ml", "MLT": "mt", "MNE": "me", "MON": "mc", "MOZ": "mz",
+  "MRI": "mu", "MTN": "mr", "MYA": "mm", "NAM": "na", "NCA": "ni",
+  "NED": "nl", "NEP": "np", "NGR": "ng", "NIG": "ne", "NOR": "no",
+  "NRU": "nr", "NZL": "nz", "OMA": "om", "PAK": "pk", "PAN": "pa",
+  "PAR": "py", "PER": "pe", "PHI": "ph", "PLE": "ps", "PLW": "pw",
+  "PNG": "pg", "POL": "pl", "POR": "pt", "PRK": "kp", "PUR": "pr",
+  "QAT": "qa", "ROU": "ro", "RSA": "za", "RUS": "ru", "RWA": "rw",
+  "SAM": "ws", "SEN": "sn", "SEY": "sc", "SIN": "sg", "SKN": "kn",
+  "SLE": "sl", "SLO": "si", "SMR": "sm", "SOL": "sb", "SOM": "so",
+  "SRB": "rs", "SRI": "lk", "STP": "st", "SUD": "sd", "SUI": "ch",
+  "SUR": "sr", "SVK": "sk", "SWE": "se", "SWZ": "sz", "SYR": "sy",
+  "TAN": "tz", "TGA": "to", "THA": "th", "TJK": "tj", "TKM": "tm",
+  "TLS": "tl", "TOG": "tg", "TPE": "tw", "TTO": "tt", "TUN": "tn",
+  "TUR": "tr", "TUV": "tv", "UAE": "ae", "UGA": "ug", "UKR": "ua",
+  "URU": "uy", "USA": "us", "UZB": "uz", "VAN": "vu", "VEN": "ve",
+  "VIE": "vn", "VIN": "vc", "YEM": "ye", "ZAM": "zm", "ZIM": "zw",
+  // Codes historiques
+  "TCH": "cz", "URS": "ru", "FRG": "de", "GDR": "de", "YUG": "rs",
+  "SCG": "rs", "EUN": "ru", "BOH": "cz"
+};
+
+// Function to convert NOC to ISO2 for flags
+function getNocFlag(noc) {
+  return nocToIso2[noc] || noc.toLowerCase().substring(0, 2);
+}
+
+// Fonction pour recalculer les échelles basées sur les continents actifs
+function recalculateScalesForFilters(season) {
+  const seasonYears = season === "Summer" ? summerYears : winterYears;
   
-  populationData = files[1];
+  filteredMaxParticipants[season] = 0;
+  filteredMaxPopulation[season] = 0;
+  filteredMaxMedals[season] = 0;
+  
+  seasonYears.forEach(year => {
+    const chartData = ops.prepareChartData(athleteData, populationData, year, season);
+    // Filtrer par continents actifs
+    const filteredData = chartData.data.filter(d => activeContinents.has(d.continent));
+    
+    if (filteredData.length > 0) {
+      const maxParticipants = d3.max(filteredData, d => d.participants);
+      const maxPopulation = d3.max(filteredData, d => d.population);
+      const maxMedals = d3.max(filteredData, d => d.medals);
+      
+      if (maxParticipants > filteredMaxParticipants[season]) {
+        filteredMaxParticipants[season] = maxParticipants;
+      }
+      if (maxPopulation > filteredMaxPopulation[season]) {
+        filteredMaxPopulation[season] = maxPopulation;
+      }
+      if (maxMedals > filteredMaxMedals[season]) {
+        filteredMaxMedals[season] = maxMedals;
+      }
+    }
+  });
+}
+
+// Variables pour les échelles fixes (calculées une fois pour toute la saison)
+let globalMaxParticipants = {Summer: 0, Winter: 0};
+let globalMaxPopulation = {Summer: 0, Winter: 0};
+let globalMaxMedals = {Summer: 0, Winter: 0};
+let globalMinMedals = {Summer: Infinity, Winter: Infinity};
+
+// Load both CSV files using operations.js
+ops.loadData(
+  "../../CSV_Dest/athlete_events_opti.csv",
+  "../../CSV_Dest/population-1900-2016.csv"
+).then(function(loadedData) {
+  athleteData = loadedData.athleteData;
+  populationData = loadedData.populationData;
   
   // Get unique years from athlete data
-  availableYears = [...new Set(athleteData.map(d => d.Year))]
-    .sort((a, b) => a - b);
+  allYears = ops.getAvailableYears(athleteData);
+  
+  // Séparer les années par saison
+  summerYears = [...new Set(athleteData.filter(d => d.Season === "Summer").map(d => d.Year))].sort((a, b) => a - b);
+  winterYears = [...new Set(athleteData.filter(d => d.Season === "Winter").map(d => d.Year))].sort((a, b) => a - b);
+  
+  // Calculer les échelles globales pour chaque saison
+  ["Summer", "Winter"].forEach(season => {
+    const seasonYears = season === "Summer" ? summerYears : winterYears;
+    seasonYears.forEach(year => {
+      const chartData = ops.prepareChartData(athleteData, populationData, year, season);
+      const data = chartData.data;
+      
+      if (data.length > 0) {
+        const maxParticipants = d3.max(data, d => d.participants);
+        const maxPopulation = d3.max(data, d => d.population);
+        const maxMedals = d3.max(data, d => d.medals);
+        const minMedals = d3.min(data, d => d.medals);
+        
+        if (maxParticipants > globalMaxParticipants[season]) {
+          globalMaxParticipants[season] = maxParticipants;
+        }
+        if (maxPopulation > globalMaxPopulation[season]) {
+          globalMaxPopulation[season] = maxPopulation;
+        }
+        if (maxMedals > globalMaxMedals[season]) {
+          globalMaxMedals[season] = maxMedals;
+        }
+        if (minMedals < globalMinMedals[season]) {
+          globalMinMedals[season] = minMedals;
+        }
+      }
+    });
+  });
   
   // Setup slider
   const yearSlider = d3.select("#yearSlider");
   const yearDisplay = d3.select("#yearDisplay");
   
-  yearSlider
-    .attr("min", d3.min(availableYears))
-    .attr("max", d3.max(availableYears))
-    .property("value", 2016);
+  // Fonction pour mettre à jour le slider selon la saison
+  function updateSliderForSeason(season) {
+    const availableYears = season === "Summer" ? summerYears : winterYears;
+    
+    if (availableYears.length === 0) {
+      console.error("No years available for season:", season);
+      return;
+    }
+    
+    const minYear = d3.min(availableYears);
+    const maxYear = d3.max(availableYears);
+    
+    yearSlider
+      .attr("min", minYear)
+      .attr("max", maxYear)
+      .property("value", minYear);
+    
+    yearDisplay.text(minYear);
+    
+    // Ajouter des datalist pour les années disponibles
+    let datalistId = "year-options";
+    d3.select("#" + datalistId).remove();
+    
+    const datalist = d3.select("body").append("datalist").attr("id", datalistId);
+    yearSlider.attr("list", datalistId);
+    
+    availableYears.forEach(year => {
+      datalist.append("option").attr("value", year);
+    });
+    
+    return minYear;
+  }
   
-  yearDisplay.text(2016);
+  // Initialiser le slider pour la saison Summer
+  const initialYear = updateSliderForSeason(currentSeason);
+  
+  // Fonction pour obtenir l'index de l'année courante
+  function getCurrentYearIndex() {
+    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
+    const currentYear = +yearSlider.property("value");
+    return availableYears.indexOf(currentYear);
+  }
+  
+  // Fonction pour mettre à jour les boutons de navigation
+  function updateNavigationButtons() {
+    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
+    const currentYear = +yearSlider.property("value");
+    const currentIndex = availableYears.indexOf(currentYear);
+    
+    d3.select("#prevBtn").property("disabled", currentIndex <= 0);
+    d3.select("#nextBtn").property("disabled", currentIndex >= availableYears.length - 1);
+  }
   
   // Update chart when slider changes
   yearSlider.on("input", function() {
     const selectedYear = +this.value;
-    // Find closest available year
-    const closestYear = availableYears.reduce((prev, curr) => 
-      Math.abs(curr - selectedYear) < Math.abs(prev - selectedYear) ? curr : prev
-    );
+    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
+    // Find closest available year using operations.js
+    const closestYear = ops.findClosestYear(availableYears, selectedYear);
     yearDisplay.text(closestYear);
     updateChart(closestYear, currentSeason);
+    updateNavigationButtons();
+  });
+  
+  // Bouton précédent
+  d3.select("#prevBtn").on("click", function() {
+    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
+    const currentYear = +yearSlider.property("value");
+    const currentIndex = availableYears.indexOf(currentYear);
+    
+    if (currentIndex > 0) {
+      const newYear = availableYears[currentIndex - 1];
+      yearSlider.property("value", newYear);
+      yearDisplay.text(newYear);
+      updateChart(newYear, currentSeason);
+      updateNavigationButtons();
+    }
+  });
+  
+  // Bouton suivant
+  d3.select("#nextBtn").on("click", function() {
+    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
+    const currentYear = +yearSlider.property("value");
+    const currentIndex = availableYears.indexOf(currentYear);
+    
+    if (currentIndex < availableYears.length - 1) {
+      const newYear = availableYears[currentIndex + 1];
+      yearSlider.property("value", newYear);
+      yearDisplay.text(newYear);
+      updateChart(newYear, currentSeason);
+      updateNavigationButtons();
+    }
   });
   
   // Setup season buttons
@@ -204,87 +550,177 @@ Promise.all([
     d3.select(this).classed("active", true);
     // Update current season
     currentSeason = this.dataset.season;
+    // Mettre à jour le slider pour la nouvelle saison
+    const newYear = updateSliderForSeason(currentSeason);
     // Update chart
-    const currentYear = +yearDisplay.text();
+    updateChart(newYear, currentSeason);
+    updateNavigationButtons();
+  });
+  
+  // Setup continent filter buttons
+  const continentButtons = d3.selectAll(".legend-item");
+  continentButtons.on("click", function() {
+    const continent = this.dataset.continent;
+    
+    // Toggle the continent in the active set
+    if (activeContinents.has(continent)) {
+      activeContinents.delete(continent);
+      d3.select(this).classed("active", false).classed("inactive", true);
+    } else {
+      activeContinents.add(continent);
+      d3.select(this).classed("active", true).classed("inactive", false);
+    }
+    
+    // Recalculer les échelles pour la saison courante avec les nouveaux filtres
+    recalculateScalesForFilters(currentSeason);
+    
+    // Update the chart with current year and season
+    const currentYear = +yearSlider.property("value");
     updateChart(currentYear, currentSeason);
   });
   
+  // Créer le tooltip une seule fois
+  tooltip = d3.select("body")
+    .append("div")
+      .attr("class", "tooltip")
+      .style("position", "absolute")
+      .style("visibility", "hidden")
+      .style("opacity", 0)
+      .style("background-color", "rgba(0, 0, 0, 0.85)")
+      .style("border-radius", "8px")
+      .style("padding", "12px 16px")
+      .style("color", "white")
+      .style("font-size", "14px")
+      .style("line-height", "1.6")
+      .style("pointer-events", "none")
+      .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.3)")
+      .style("z-index", "1000")
+      .style("max-width", "250px");
+  
+  // Calculer les échelles initiales avec tous les continents actifs
+  recalculateScalesForFilters("Summer");
+  recalculateScalesForFilters("Winter");
+  
   // Initial chart render
-  updateChart(2016, currentSeason);
+  updateChart(initialYear, currentSeason);
+  updateNavigationButtons();
+}).catch(function(error) {
+  console.error("Error loading files:", error);
+  document.getElementById("my_dataviz").innerHTML = 
+    "<p style='color: red; font-weight: bold;'>Erreur de chargement des fichiers CSV. Vérifiez les chemins des fichiers et la console.</p>";
 });
 
-function updateChart(selectedYear, season) {
-  // Filter data for selected year and season
-  const yearAthletes = athleteData.filter(d => d.Year === selectedYear && d.Season === season);
+// Create 3 functions to show / update / hide the tooltip
+const showTooltip = function(event, d) {
+  // Annuler toutes les transitions en cours pour éviter les conflits
+  tooltip.interrupt();
   
-  // Calculate participants per country
-  const participantsByCountry = d3.rollup(
-    yearAthletes,
-    v => new Set(v.map(d => d.ID)).size, // Count unique athletes
-    d => d.NOC
-  );
+  // Formater les nombres pour meilleure lisibilité
+  const formattedPopulation = d3.format(",")(Math.round(d.population));
+  const formattedParticipants = d3.format(",")(d.participants);
+  const formattedMedals = d3.format(",")(d.medals);
   
-  // Calculate medals per country
-  const medalsByCountry = d3.rollup(
-    yearAthletes.filter(d => d.Medal && d.Medal.trim() !== ""),
-    v => v.length,
-    d => d.NOC
-  );
+  tooltip
+    .style("opacity", 1)
+    .html(`
+      <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 6px;">
+        ${d.noc}
+      </div>
+      <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-bottom: 6px;">
+        ${d.continent}
+      </div>
+      <div style="margin-top: 4px;">
+        <strong>👥 Participants:</strong> ${formattedParticipants}
+      </div>
+      <div style="margin-top: 4px;">
+        <strong>🏅 Médailles:</strong> ${formattedMedals}
+      </div>
+      <div style="margin-top: 4px;">
+        <strong>🌍 Population:</strong> ${formattedPopulation}
+      </div>
+    `)
+    .style("left", (event.pageX + 15) + "px")
+    .style("top", (event.pageY - 28) + "px")
+    .style("visibility", "visible");
+}
+
+const moveTooltip = function(event, d) {
+  tooltip
+    .style("left", (event.pageX + 15) + "px")
+    .style("top", (event.pageY - 28) + "px");
+}
+
+const hideTooltip = function(event, d) {
+  // Annuler toutes les transitions en cours
+  tooltip.interrupt();
   
-  // Get population for selected year
-  const yearPopulation = d3.rollup(
-    populationData.filter(d => d.Year === selectedYear),
-    v => v[0]["Population (historical)"],
-    d => d.Code
-  );
+  tooltip
+    .transition()
+    .duration(300)
+    .style("opacity", 0)
+    .on("end", function() {
+      // Cacher complètement le tooltip après la transition
+      d3.select(this).style("visibility", "hidden");
+    });
+}
+
+// Initialize chart elements
+function initializeChart() {
+  // Create a defs section for patterns
+  const defs = svg.append("defs");
   
-  // Combine all data
-  const combinedData = [];
-  participantsByCountry.forEach((participants, noc) => {
-    const medals = medalsByCountry.get(noc) || 0;
-    const population = yearPopulation.get(noc);
-    
-    if (population && population > 0) { // Only include countries with population data
-      combinedData.push({
-        noc: noc,
-        participants: participants,
-        medals: medals,
-        population: population
-      });
-    }
-  });
+  // Add bubbles group FIRST (so it's behind everything else)
+  bubblesGroup = svg.append('g')
+    .attr("class", "bubbles-group")
+    .attr("clip-path", "url(#chart-area-clip)");
   
-  // Clear previous chart
-  svg.selectAll("*").remove();
+  // Add a white background rectangle for X axis area
+  svg.append("rect")
+    .attr("class", "x-axis-bg")
+    .attr("x", -10)
+    .attr("y", height - 2)
+    .attr("width", width + 20)
+    .attr("height", 50)
+    .attr("fill", "white");
   
-  // Add X axis (participants)
-  const maxParticipants = d3.max(combinedData, d => d.participants);
-  const x = d3.scaleLinear()
-    .domain([0, maxParticipants * 1.1])
-    .range([0, width]);
-  svg.append("g")
-    .attr("transform", `translate(0, ${height})`)
-    .call(d3.axisBottom(x));
+  // Add a white background rectangle for Y axis area
+  svg.append("rect")
+    .attr("class", "y-axis-bg")
+    .attr("x", -80)
+    .attr("y", -10)
+    .attr("width", 80)
+    .attr("height", height + 20)
+    .attr("fill", "white");
+  
+  // Add a white background rectangle for the corner between axes
+  svg.append("rect")
+    .attr("class", "corner-axis-bg")
+    .attr("x", -80)
+    .attr("y", height - 2)
+    .attr("width", 80)
+    .attr("height", 50)
+    .attr("fill", "white");
+  
+  // Add X axis group (after bubbles, so it's on top)
+  xAxisGroup = svg.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", `translate(0, ${height})`);
   
   // Add X axis label
   svg.append("text")
-    .attr("class", "axis-label")
+    .attr("class", "axis-label x-label")
     .attr("text-anchor", "middle")
     .attr("x", width / 2)
     .attr("y", height + 40)
     .text("Nombre de participants");
   
-  // Add Y axis (medals)
-  const maxMedals = d3.max(combinedData, d => d.medals);
-  const y = d3.scaleLinear()
-    .domain([0, maxMedals * 1.1])
-    .range([height, 0]);
-  svg.append("g")
-    .call(d3.axisLeft(y));
+  // Add Y axis group (after bubbles, so it's on top)
+  yAxisGroup = svg.append("g")
+    .attr("class", "y-axis");
   
   // Add Y axis label
   svg.append("text")
-    .attr("class", "axis-label")
+    .attr("class", "axis-label y-label")
     .attr("text-anchor", "middle")
     .attr("transform", "rotate(-90)")
     .attr("x", -height / 2)
@@ -292,79 +728,293 @@ function updateChart(selectedYear, season) {
     .text("Nombre de médailles");
   
   // Add title
-  const seasonText = season === "Summer" ? "Été" : "Hiver";
-  svg.append("text")
+  titleElement = svg.append("text")
     .attr("class", "title")
     .attr("text-anchor", "middle")
     .attr("x", width / 2)
-    .attr("y", -10)
-    .text(`Jeux Olympiques ${seasonText} ${selectedYear}`);
+    .attr("y", -10);
   
-  // Add a scale for bubble size
-  const minPop = d3.min(combinedData, d => d.population);
-  const maxPop = d3.max(combinedData, d => d.population);
-  const z = d3.scaleSqrt()
-    .domain([minPop, maxPop])
+  // Initialize color scale
+  colorScale = d3.scaleOrdinal()
+    .domain(["Africa", "Americas", "Asia", "Europe", "Oceania", "Unknown"])
+    .range(["#9b59b6", "#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#95a5a6"]);
+  
+  // Add white masks to hide bubbles that overflow outside the chart area
+  // These rectangles are added to svgContainer (not svg) so they stay fixed during zoom
+  
+  // Top-left corner mask (above Y-axis)
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-top-left")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("width", margin.left)
+    .attr("height", margin.top)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Top mask (above the chart)
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-top")
+    .attr("x", margin.left)
+    .attr("y", 0)
+    .attr("width", width)
+    .attr("height", margin.top)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Top-right corner mask
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-top-right")
+    .attr("x", margin.left + width)
+    .attr("y", 0)
+    .attr("width", margin.right)
+    .attr("height", margin.top)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Right mask (right of the chart)
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-right")
+    .attr("x", margin.left + width)
+    .attr("y", margin.top)
+    .attr("width", margin.right)
+    .attr("height", height)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Bottom-right corner mask
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-bottom-right")
+    .attr("x", margin.left + width)
+    .attr("y", margin.top + height)
+    .attr("width", margin.right)
+    .attr("height", margin.bottom)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Bottom mask (below X-axis, but positioned to not cover the axis labels)
+  // Covers from after the axis line to the bottom
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-bottom")
+    .attr("x", margin.left)
+    .attr("y", margin.top + height + 48)
+    .attr("width", width)
+    .attr("height", margin.bottom - 48)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Bottom-left corner mask
+  svgContainer.append("rect")
+    .attr("class", "chart-mask-bottom-left")
+    .attr("x", 0)
+    .attr("y", margin.top + height)
+    .attr("width", margin.left)
+    .attr("height", margin.bottom)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Setup zoom behavior
+  setupZoom();
+}
+
+// Setup zoom and pan functionality
+let zoomBehavior;
+
+function setupZoom() {
+  // Create zoom behavior
+  zoomBehavior = d3.zoom()
+    .scaleExtent([1, 100])  // Limite: zoom min 1x (normal), zoom max 100x
+    .extent([[0, 0], [width, height]])
+    .translateExtent([[0, 0], [width, height]])  // Empêche de sortir des limites du graphique
+    .on("zoom", zoomed);
+  
+  // Create an invisible rectangle to capture zoom/pan events on the chart area
+  const zoomRect = svg.append("rect")
+    .attr("class", "zoom-rect")
+    .attr("width", width)
+    .attr("height", height)
+    .style("fill", "none")
+    .style("pointer-events", "all")
+    .style("cursor", "grab")
+    .on("mousedown", function() {
+      d3.select(this).style("cursor", "grabbing");
+    })
+    .on("mouseup", function() {
+      d3.select(this).style("cursor", "grab");
+    })
+    .call(zoomBehavior);
+  
+  // Move zoom rect behind bubbles but in front of backgrounds
+  svg.select(".bubbles-group").raise();
+  svg.selectAll(".x-axis-bg, .y-axis-bg, .corner-axis-bg").raise();
+  svg.select(".x-axis").raise();
+  svg.select(".y-axis").raise();
+  
+  function zoomed(event) {
+    currentZoomTransform = event.transform;
+    
+    // Apply transform to bubbles
+    bubblesGroup.attr("transform", event.transform);
+    
+    // Update axes with rescaled domains
+    const newXScale = event.transform.rescaleX(xScale);
+    const newYScale = event.transform.rescaleY(yScale);
+    
+    xAxisGroup.call(d3.axisBottom(newXScale));
+    yAxisGroup.call(d3.axisLeft(newYScale));
+  }
+}
+
+// Reset zoom to identity (no zoom)
+function resetZoom() {
+  if (zoomBehavior) {
+    svg.select(".zoom-rect")
+      .transition()
+      .duration(750)
+      .call(zoomBehavior.transform, d3.zoomIdentity);
+  }
+}
+
+// Function to create or update flag patterns
+function createFlagPattern(noc) {
+  const patternId = `flag-${noc}`;
+  const iso2 = getNocFlag(noc);
+  
+  // Check if pattern already exists
+  if (svg.select(`#${patternId}`).empty()) {
+    const defs = svg.select("defs");
+    const pattern = defs.append("pattern")
+      .attr("id", patternId)
+      .attr("width", 1)
+      .attr("height", 1)
+      .attr("patternContentUnits", "objectBoundingBox");
+    
+    // Add the flag image - use a larger viewBox to ensure proper cropping
+    pattern.append("image")
+      .attr("href", `https://flagcdn.com/${iso2}.svg`)
+      .attr("x", -0.25)
+      .attr("y", -0.25)
+      .attr("width", 1.5)
+      .attr("height", 1.5)
+      .attr("preserveAspectRatio", "xMidYMid slice");
+  }
+  
+  return `url(#${patternId})`;
+}
+
+function updateChart(selectedYear, season) {
+  // Utilisation des fonctions de operations.js pour préparer les données
+  const chartData = ops.prepareChartData(athleteData, populationData, selectedYear, season);
+  let combinedData = chartData.data;
+  
+  // Filtrer les données selon les continents actifs
+  combinedData = combinedData.filter(d => activeContinents.has(d.continent));
+  
+  // Initialize chart elements if not already done
+  if (!xAxisGroup) {
+    initializeChart();
+  }
+  
+  // Vérifier s'il y a des données
+  if (combinedData.length === 0) {
+    // Cacher les bulles mais garder le graphique
+    bubblesGroup.selectAll("circle").remove();
+    
+    // Afficher un message
+    let noDataText = svg.select(".no-data-text");
+    if (noDataText.empty()) {
+      noDataText = svg.append("text")
+        .attr("class", "no-data-text")
+        .attr("x", width / 2)
+        .attr("y", height / 2)
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("fill", "#666");
+    }
+    noDataText.text(`Aucune donnée disponible pour les continents sélectionnés`);
+    return;
+  } else {
+    // Supprimer le message "no data" s'il existe
+    svg.select(".no-data-text").remove();
+  }
+  
+  // Create flag patterns for all countries in the data
+  combinedData.forEach(d => {
+    createFlagPattern(d.noc);
+  });
+  
+  // Utiliser les échelles calculées pour la saison avec les filtres actifs
+  xScale = d3.scaleLinear()
+    .domain([0, filteredMaxParticipants[season] * 1.1])
+    .range([0, width]);
+  
+  yScale = d3.scaleLinear()
+    .domain([0, filteredMaxMedals[season] * 1.1])
+    .range([height, 0]);
+  
+  zScale = d3.scaleSqrt()
+    .domain([0, filteredMaxPopulation[season]])
     .range([5, 50]);
   
-  // Add a scale for bubble color
-  const myColor = d3.scaleOrdinal()
-    .range(d3.schemeCategory10);
+  // Reset zoom when changing data
+  resetZoom();
   
-  // Create a tooltip div that is hidden by default:
-  const tooltip = d3.select("body")
-    .append("div")
-      .style("opacity", 0)
-      .attr("class", "tooltip")
-      .style("position", "absolute")
-      .style("background-color", "black")
-      .style("border-radius", "5px")
-      .style("padding", "10px")
-      .style("color", "white")
-      .style("pointer-events", "none");
+  // Update axes with transition
+  xAxisGroup.transition()
+    .duration(750)
+    .call(d3.axisBottom(xScale));
   
-  // Create 3 functions to show / update / hide the tooltip
-  const showTooltip = function(event, d) {
-    tooltip
-      .transition()
-      .duration(200);
-    tooltip
-      .style("opacity", 1)
-      .html(`<strong>${d.noc}</strong><br/>
-             Participants: ${d.participants}<br/>
-             Médailles: ${d.medals}<br/>
-             Population: ${d3.format(",")(Math.round(d.population))}`)
-      .style("left", (event.pageX + 15) + "px")
-      .style("top", (event.pageY - 28) + "px");
-  }
+  yAxisGroup.transition()
+    .duration(750)
+    .call(d3.axisLeft(yScale));
   
-  const moveTooltip = function(event, d) {
-    tooltip
-      .style("left", (event.pageX + 15) + "px")
-      .style("top", (event.pageY - 28) + "px");
-  }
+  // Update title
+  const seasonText = season === "Summer" ? "Été" : "Hiver";
+  titleElement.text(`Jeux Olympiques ${seasonText} ${selectedYear}`);
   
-  const hideTooltip = function(event, d) {
-    tooltip
-      .transition()
-      .duration(200)
-      .style("opacity", 0);
-  }
+  // Trier les données par population (du plus grand au plus petit)
+  // Les plus grosses bulles seront dessinées en premier (arrière-plan)
+  const sortedData = combinedData.sort((a, b) => b.population - a.population);
   
-  // Add dots
-  svg.append('g')
+  // Update bubbles with smooth transitions
+  const bubbles = bubblesGroup
     .selectAll("circle")
-    .data(combinedData)
-    .join("circle")
-      .attr("class", "bubbles")
-      .attr("cx", d => x(d.participants))
-      .attr("cy", d => y(d.medals))
-      .attr("r", d => z(d.population))
-      .style("fill", d => myColor(d.noc))
-    // Trigger the functions
+    .data(sortedData, d => d.noc); // Use noc as key for object constancy
+  
+  // Exit: remove old bubbles
+  bubbles.exit()
+    .transition()
+    .duration(750)
+    .attr("r", 0)
+    .style("opacity", 0)
+    .remove();
+  
+  // Enter: add new bubbles
+  const bubblesEnter = bubbles.enter()
+    .append("circle")
+    .attr("class", "bubbles")
+    .attr("cx", d => xScale(d.participants))
+    .attr("cy", d => yScale(d.medals))
+    .attr("r", 0)
+    .style("fill", d => `url(#flag-${d.noc})`)
+    .style("stroke", d => colorScale(d.continent))
+    .style("stroke-width", "2px")
+    .style("opacity", 0);
+  
+  // Update + Enter: transition all bubbles to new positions and sizes
+  bubblesEnter.merge(bubbles)
     .on("mouseover", showTooltip)
     .on("mousemove", moveTooltip)
-    .on("mouseleave", hideTooltip);
+    .on("mouseleave", hideTooltip)
+    .transition()
+    .duration(400)
+    .attr("cx", d => xScale(d.participants))
+    .attr("cy", d => yScale(d.medals))
+    .attr("r", d => zScale(d.population))
+    .style("fill", d => `url(#flag-${d.noc})`)
+    .style("stroke", d => colorScale(d.continent))
+    .style("stroke-width", "2px")
+    .style("opacity", 1);
 }
 
 </script>

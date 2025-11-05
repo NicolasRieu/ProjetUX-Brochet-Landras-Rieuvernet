@@ -62,10 +62,10 @@ Dimension temps : Animation sur les années
 
 X = Nombre de participants par pays sur une année
 
-Y = Nombre de médailles par pays sur une année
+Y = Nombre d'habitants par pays sur une année
 
-Taille des bulles = Nombre d'habitants par pays sur une année
+Taille des bulles = Nombre de médailles par pays sur une année
 
-Couleur = Saison de Jeux Olympiques (Hiver/Eté)
+Couleur = Continent d'appartenance de chaque pays
 
 Dimension de temps = Animation sur les années
