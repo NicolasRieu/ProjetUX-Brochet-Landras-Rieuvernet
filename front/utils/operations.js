@@ -121,13 +121,27 @@ export function getPopulationByCountry(populationData, year) {
 }
 
 /**
+ * Récupère les noms de pays par NOC
+ * @param {Array} yearAthletes - Données des athlètes pour une année/saison
+ * @returns {Map<string, string>} - Map de NOC -> nom du pays (Team)
+ */
+export function getCountryNames(yearAthletes) {
+  return d3.rollup(
+    yearAthletes,
+    v => v[0].Team, // Prend le premier nom de Team pour ce NOC
+    d => d.NOC
+  );
+}
+
+/**
  * Combine les données de participants, médailles et population
  * @param {Map} participantsByCountry - Map de NOC -> participants
  * @param {Map} medalsByCountry - Map de NOC -> médailles
  * @param {Map} populationByCountry - Map de Code -> {population, continent}
+ * @param {Map} countryNames - Map de NOC -> nom du pays
  * @returns {Array<Object>} - Tableau d'objets combinés
  */
-export function combineData(participantsByCountry, medalsByCountry, populationByCountry) {
+export function combineData(participantsByCountry, medalsByCountry, populationByCountry, countryNames) {
   const combinedData = [];
   
   participantsByCountry.forEach((participants, noc) => {
@@ -137,6 +151,7 @@ export function combineData(participantsByCountry, medalsByCountry, populationBy
     if (popData && popData.population > 0) {
       combinedData.push({
         noc: noc,
+        countryName: countryNames.get(noc) || noc,
         participants: participants,
         medals: medals,
         population: popData.population,
@@ -164,6 +179,7 @@ export function prepareChartData(athleteData, populationData, year, season) {
   const participantsByCountry = calculateParticipantsByCountry(yearAthletes);
   const medalsByCountry = calculateMedalsByCountry(yearAthletes);
   const populationByCountry = getPopulationByCountry(populationData, year);
+  const countryNames = getCountryNames(yearAthletes);
   
   // Log pour debug
   console.log(`Year: ${year}, Season: ${season}`);
@@ -173,7 +189,7 @@ export function prepareChartData(athleteData, populationData, year, season) {
   console.log(`Countries with population: ${populationByCountry.size}`);
   
   // Combine les données
-  const combinedData = combineData(participantsByCountry, medalsByCountry, populationByCountry);
+  const combinedData = combineData(participantsByCountry, medalsByCountry, populationByCountry, countryNames);
   
   console.log(`Combined data: ${combinedData.length} countries`);
   
