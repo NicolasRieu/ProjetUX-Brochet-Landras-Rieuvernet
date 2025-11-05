@@ -115,14 +115,18 @@
   .axis-label {
     font-size: 14px;
     font-weight: bold;
+    fill: #333;
+    pointer-events: none;
   }
   
   .title {
     font-size: 18px;
     font-weight: bold;
+    fill: #333;
+    pointer-events: none;
   }
   
-  /* Style pour les axes - fond blanc pour qu'ils soient bien visibles */
+  /* Style pour les axes - toujours au premier plan */
   .x-axis path,
   .x-axis line,
   .y-axis path,
@@ -135,6 +139,15 @@
   .y-axis text {
     fill: #333;
     font-size: 11px;
+    pointer-events: none; /* Évite les interférences avec les interactions */
+  }
+  
+  /* Rectangles de masquage - cachent les bulles qui débordent hors du graphique */
+  .bottom-mask,
+  .left-mask,
+  .top-mask,
+  .right-mask {
+    pointer-events: none;
   }
   
   .legend {
@@ -674,39 +687,58 @@ function initializeChart() {
     .attr("class", "bubbles-group")
     .attr("clip-path", "url(#chart-area-clip)");
   
-  // Add a white background rectangle for X axis area
-  svg.append("rect")
-    .attr("class", "x-axis-bg")
-    .attr("x", -10)
-    .attr("y", height - 2)
-    .attr("width", width + 20)
-    .attr("height", 50)
-    .attr("fill", "white");
+  // Les masques blancs seront ajoutés APRÈS les bulles pour cacher tout débordement
+  // Ils sont dans le groupe svg (pas svgContainer) pour être au bon endroit
   
-  // Add a white background rectangle for Y axis area
+  // Masque en bas (couvre la zone sous le graphique)
   svg.append("rect")
-    .attr("class", "y-axis-bg")
-    .attr("x", -80)
-    .attr("y", -10)
-    .attr("width", 80)
-    .attr("height", height + 20)
-    .attr("fill", "white");
+    .attr("class", "bottom-mask")
+    .attr("x", -margin.left)
+    .attr("y", height)
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", margin.bottom)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
   
-  // Add a white background rectangle for the corner between axes
+  // Masque à gauche (couvre la zone à gauche du graphique)
   svg.append("rect")
-    .attr("class", "corner-axis-bg")
-    .attr("x", -80)
-    .attr("y", height - 2)
-    .attr("width", 80)
-    .attr("height", 50)
-    .attr("fill", "white");
+    .attr("class", "left-mask")
+    .attr("x", -margin.left)
+    .attr("y", -margin.top)
+    .attr("width", margin.left)
+    .attr("height", height + margin.top)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
   
-  // Add X axis group (after bubbles, so it's on top)
+  // Masque en haut (couvre la zone au-dessus du graphique)
+  svg.append("rect")
+    .attr("class", "top-mask")
+    .attr("x", -margin.left)
+    .attr("y", -margin.top)
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", margin.top)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Masque à droite (couvre la zone à droite du graphique)
+  svg.append("rect")
+    .attr("class", "right-mask")
+    .attr("x", width)
+    .attr("y", -margin.top)
+    .attr("width", margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .attr("fill", "white")
+    .attr("pointer-events", "none");
+  
+  // Add axes groups (AFTER masking rectangles, so they're on top)
   xAxisGroup = svg.append("g")
     .attr("class", "x-axis")
     .attr("transform", `translate(0, ${height})`);
   
-  // Add X axis label
+  yAxisGroup = svg.append("g")
+    .attr("class", "y-axis");
+  
+  // Add axis labels (AFTER axes, so they're always visible)
   svg.append("text")
     .attr("class", "axis-label x-label")
     .attr("text-anchor", "middle")
@@ -714,11 +746,6 @@ function initializeChart() {
     .attr("y", height + 40)
     .text("Nombre de participants");
   
-  // Add Y axis group (after bubbles, so it's on top)
-  yAxisGroup = svg.append("g")
-    .attr("class", "y-axis");
-  
-  // Add Y axis label
   svg.append("text")
     .attr("class", "axis-label y-label")
     .attr("text-anchor", "middle")
@@ -739,79 +766,9 @@ function initializeChart() {
     .domain(["Africa", "Americas", "Asia", "Europe", "Oceania", "Unknown"])
     .range(["#9b59b6", "#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#95a5a6"]);
   
-  // Add white masks to hide bubbles that overflow outside the chart area
-  // These rectangles are added to svgContainer (not svg) so they stay fixed during zoom
-  
-  // Top-left corner mask (above Y-axis)
-  svgContainer.append("rect")
-    .attr("class", "chart-mask-top-left")
-    .attr("x", 0)
-    .attr("y", 0)
-    .attr("width", margin.left)
-    .attr("height", margin.top)
-    .attr("fill", "white")
-    .attr("pointer-events", "none");
-  
-  // Top mask (above the chart)
-  svgContainer.append("rect")
-    .attr("class", "chart-mask-top")
-    .attr("x", margin.left)
-    .attr("y", 0)
-    .attr("width", width)
-    .attr("height", margin.top)
-    .attr("fill", "white")
-    .attr("pointer-events", "none");
-  
-  // Top-right corner mask
-  svgContainer.append("rect")
-    .attr("class", "chart-mask-top-right")
-    .attr("x", margin.left + width)
-    .attr("y", 0)
-    .attr("width", margin.right)
-    .attr("height", margin.top)
-    .attr("fill", "white")
-    .attr("pointer-events", "none");
-  
-  // Right mask (right of the chart)
-  svgContainer.append("rect")
-    .attr("class", "chart-mask-right")
-    .attr("x", margin.left + width)
-    .attr("y", margin.top)
-    .attr("width", margin.right)
-    .attr("height", height)
-    .attr("fill", "white")
-    .attr("pointer-events", "none");
-  
-  // Bottom-right corner mask
-  svgContainer.append("rect")
-    .attr("class", "chart-mask-bottom-right")
-    .attr("x", margin.left + width)
-    .attr("y", margin.top + height)
-    .attr("width", margin.right)
-    .attr("height", margin.bottom)
-    .attr("fill", "white")
-    .attr("pointer-events", "none");
-  
-  // Bottom mask (below X-axis, but positioned to not cover the axis labels)
-  // Covers from after the axis line to the bottom
-  svgContainer.append("rect")
-    .attr("class", "chart-mask-bottom")
-    .attr("x", margin.left)
-    .attr("y", margin.top + height + 48)
-    .attr("width", width)
-    .attr("height", margin.bottom - 48)
-    .attr("fill", "white")
-    .attr("pointer-events", "none");
-  
-  // Bottom-left corner mask
-  svgContainer.append("rect")
-    .attr("class", "chart-mask-bottom-left")
-    .attr("x", 0)
-    .attr("y", margin.top + height)
-    .attr("width", margin.left)
-    .attr("height", margin.bottom)
-    .attr("fill", "white")
-    .attr("pointer-events", "none");
+  // Note: Les rectangles de masquage sont maintenant gérés dans le groupe svg
+  // (x-axis-mask et y-axis-mask) pour masquer les bulles qui débordent
+  // Ces rectangles restent synchronisés avec le zoom et sont toujours au bon endroit
   
   // Setup zoom behavior
   setupZoom();
@@ -844,11 +801,17 @@ function setupZoom() {
     })
     .call(zoomBehavior);
   
-  // Move zoom rect behind bubbles but in front of backgrounds
+  // Ensure proper z-order: bubbles < masking rectangles < axes < labels
+  // This ensures bubbles are always hidden outside the chart area
   svg.select(".bubbles-group").raise();
-  svg.selectAll(".x-axis-bg, .y-axis-bg, .corner-axis-bg").raise();
+  // Lever tous les masques au-dessus des bulles
+  svg.selectAll(".bottom-mask, .left-mask, .top-mask, .right-mask").raise();
+  // Puis les axes au-dessus des masques
   svg.select(".x-axis").raise();
   svg.select(".y-axis").raise();
+  // Ensure labels and title are always on top
+  svg.selectAll(".axis-label").raise();
+  svg.select(".title").raise();
   
   function zoomed(event) {
     currentZoomTransform = event.transform;
