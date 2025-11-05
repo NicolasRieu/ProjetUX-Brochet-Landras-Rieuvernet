@@ -19,6 +19,5 @@ with socketserver.TCPServer(("", PORT), Handler) as httpd:
     print(f"Serveur demarree sur le port {PORT}")
     print(f"Ouvrez votre navigateur a l'adresse:")
     print(f"  http://localhost:{PORT}/front/bubble_chart/visuNico.html")
-    print(f"  http://localhost:{PORT}/front/map_choropleth/map.html")
     print(f"\nAppuyez sur Ctrl+C pour arreter le serveur")
     httpd.serve_forever()
