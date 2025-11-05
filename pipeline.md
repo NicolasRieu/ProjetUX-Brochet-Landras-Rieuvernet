@@ -24,11 +24,16 @@ charger("population-1900-2016.csv")
 - Vérifier que toutes les colonnes nécessaires sont présentes.
 - Vérifier la cohérence des types (Year = entier, Medal = texte, Population = entier).
 - Identifier les valeurs manquantes.
-
+- **Vérifier la correspondance des codes pays** entre les datasets athlètes et population.
 
 ```
 si colonnes manquantes → signaler
 si valeurs aberrantes → signaler
+
+# Validation des codes pays
+nb_codes_correspondants = vérifier_mapping(athlete_NOC, population_Code)
+si taux_correspondance < 90% → signaler
+
 produire rapport("validation_report")
 ```
 
@@ -36,13 +41,35 @@ produire rapport("validation_report")
 
 ## 3. Nettoyage
 - Supprimer les doublons.
-- Harmoniser les codes pays (`NOC`) avec le dataset population.
+- **Harmoniser les codes pays (`NOC`)** : Conversion des codes IOC (Comité International Olympique) vers les codes ISO 3166-1 alpha-3 pour assurer la cohérence entre les datasets.
+  - Création d'un mapping automatique IOC → ISO (ex: `ALG` → `DZA` pour l'Algérie, `URS` → `RUS` pour l'URSS)
+  - 72 mappings manuels + 130 mappings automatiques = 202 codes convertis
+  - Taux de correspondance : **96.9%** des pays alignés (amélioration continue)
+  - Vérification de la correspondance entre les deux datasets
+  - Pays historiques mappés vers leurs successeurs (URSS → Russie)
+- **Dédoublonner les médailles des épreuves d'équipe** : En relais et sports d'équipe, chaque athlète avait une ligne avec la même médaille. Une seule médaille est maintenant comptabilisée par (Année, Pays, Épreuve, Type de médaille).
+  - Réduction : 20,855 lignes de médailles en double supprimées (52.6%)
+  - De 39,640 à 18,785 médailles uniques
 - Gérer les populations manquantes.
 
 ```
 supprimer_doublons(données)
+
+# Harmonisation des codes pays
+créer_mapping_pays()  # Génère country_code_mapping.csv
+convertir_codes(IOC → ISO)  # Applique le mapping aux données athlètes
+vérifier_correspondance()  # Valide l'alignement des codes
+
+# Dédoublonnage des médailles d'équipe
+dédoublonner_médailles(Year, NOC, Event, Medal)  # Group by pour n'avoir qu'une médaille par épreuve
+
 harmoniser(NOC, population)
 ```
+
+**Scripts associés :**
+- `create_country_mapping.py` : Création du mapping IOC → ISO
+- `filterAthlete.py` : Application du mapping, filtrage et dédoublonnage des médailles
+- `check_correspondence.py` : Vérification de la correspondance
 
 ---
 
