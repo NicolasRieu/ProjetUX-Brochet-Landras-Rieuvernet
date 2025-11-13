@@ -75,6 +75,35 @@
     cursor: not-allowed;
   }
   
+  .play-btn {
+    padding: 8px 15px;
+    font-size: 18px;
+    font-weight: bold;
+    border: 2px solid #333;
+    border-radius: 5px;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 45px;
+  }
+  
+  .play-btn:hover {
+    background-color: #2196F3;
+    color: white;
+    border-color: #2196F3;
+  }
+  
+  .play-btn.active {
+    background-color: #f44336;
+    color: white;
+    border-color: #f44336;
+  }
+  
+  .play-btn.active:hover {
+    background-color: #d32f2f;
+    border-color: #d32f2f;
+  }
+  
   .season-buttons {
     display: flex;
     gap: 10px;
@@ -228,6 +257,8 @@
       <input type="range" id="yearSlider" min="1896" max="2016" value="2016" step="2">
       <button class="nav-btn" id="nextBtn">▶</button>
       <span id="yearDisplay">2016</span>
+      <button class="play-btn" id="playBackwardBtn" title="Lecture arrière">⏮</button>
+      <button class="play-btn" id="playForwardBtn" title="Lecture avant">⏯</button>
     </div>
   </div>
   
@@ -319,6 +350,11 @@ let activeContinents = new Set(["Africa", "Americas", "Asia", "Europe", "Oceania
 
 // Variable pour garder la trace de la bulle sélectionnée
 let selectedBubble = null;
+
+// Variables pour la lecture automatique
+let autoPlayInterval = null;
+let autoPlayDirection = 1; // 1 pour avant, -1 pour arrière
+let autoPlaySpeed = 2000; // Vitesse en millisecondes (2 secondes par défaut)
 
 // Échelles calculées selon les filtres de continents actifs
 let filteredMaxParticipants = {Summer: 0, Winter: 0};
@@ -516,6 +552,9 @@ ops.loadData(
   
   // Update chart when slider changes
   yearSlider.on("input", function() {
+    // Arrêter la lecture automatique si l'utilisateur bouge le slider
+    stopAutoPlay();
+    
     const selectedYear = getYearFromSliderIndex();
     yearDisplay.text(selectedYear);
     updateChart(selectedYear, currentSeason);
@@ -524,6 +563,9 @@ ops.loadData(
   
   // Bouton précédent
   d3.select("#prevBtn").on("click", function() {
+    // Arrêter la lecture automatique
+    stopAutoPlay();
+    
     const currentIndex = getCurrentYearIndex();
     
     if (currentIndex > 0) {
@@ -538,6 +580,9 @@ ops.loadData(
   
   // Bouton suivant
   d3.select("#nextBtn").on("click", function() {
+    // Arrêter la lecture automatique
+    stopAutoPlay();
+    
     const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
     const currentIndex = getCurrentYearIndex();
     
@@ -554,6 +599,9 @@ ops.loadData(
   // Setup season buttons
   const seasonButtons = d3.selectAll(".season-btn");
   seasonButtons.on("click", function() {
+    // Arrêter la lecture automatique si active
+    stopAutoPlay();
+    
     // Remove active class from all buttons
     seasonButtons.classed("active", false);
     // Add active class to clicked button
@@ -565,6 +613,36 @@ ops.loadData(
     // Update chart
     updateChart(newYear, currentSeason);
     updateNavigationButtons();
+  });
+  
+  // Setup auto-play buttons
+  const playForwardBtn = d3.select("#playForwardBtn");
+  const playBackwardBtn = d3.select("#playBackwardBtn");
+  
+  playForwardBtn.on("click", function() {
+    if (autoPlayInterval && autoPlayDirection === 1) {
+      // Si on lit déjà en avant, on arrête
+      stopAutoPlay();
+    } else {
+      // Sinon on démarre la lecture en avant
+      stopAutoPlay(); // Arrêter toute lecture en cours
+      autoPlayDirection = 1;
+      startAutoPlay();
+      d3.select(this).classed("active", true);
+    }
+  });
+  
+  playBackwardBtn.on("click", function() {
+    if (autoPlayInterval && autoPlayDirection === -1) {
+      // Si on lit déjà en arrière, on arrête
+      stopAutoPlay();
+    } else {
+      // Sinon on démarre la lecture en arrière
+      stopAutoPlay(); // Arrêter toute lecture en cours
+      autoPlayDirection = -1;
+      startAutoPlay();
+      d3.select(this).classed("active", true);
+    }
   });
   
   // Setup continent filter buttons
@@ -896,6 +974,45 @@ function selectBubble(element, d) {
   // Appliquer un style visuel pour montrer la sélection (sans agrandir la bordure)
   d3.select(element)
     .style("filter", "drop-shadow(0 0 8px rgba(0,0,0,0.5))");
+}
+
+// Fonction pour démarrer la lecture automatique
+function startAutoPlay() {
+  // Empêcher de démarrer plusieurs intervalles
+  if (autoPlayInterval) return;
+  
+  const yearSlider = d3.select("#yearSlider");
+  
+  autoPlayInterval = setInterval(() => {
+    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
+    const currentIndex = +yearSlider.property("value");
+    let nextIndex = currentIndex + autoPlayDirection;
+    
+    // Vérifier si on atteint une extrémité
+    if (nextIndex >= availableYears.length || nextIndex < 0) {
+      // Arrêter la lecture automatique quand on atteint une extrémité
+      stopAutoPlay();
+      return;
+    }
+    
+    // Mettre à jour le slider et le graphique
+    yearSlider.property("value", nextIndex);
+    const newYear = availableYears[nextIndex];
+    d3.select("#yearDisplay").text(newYear);
+    updateChart(newYear, currentSeason);
+    updateNavigationButtons();
+  }, autoPlaySpeed);
+}
+
+// Fonction pour arrêter la lecture automatique
+function stopAutoPlay() {
+  if (autoPlayInterval) {
+    clearInterval(autoPlayInterval);
+    autoPlayInterval = null;
+  }
+  // Retirer la classe active de tous les boutons de lecture
+  d3.select("#playForwardBtn").classed("active", false);
+  d3.select("#playBackwardBtn").classed("active", false);
 }
 
 // Function to create or update flag patterns
