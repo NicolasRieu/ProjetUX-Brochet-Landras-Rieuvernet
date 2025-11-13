@@ -317,6 +317,9 @@ let currentZoomTransform = d3.zoomIdentity;
 // Filtres actifs pour les continents (tous actifs par défaut)
 let activeContinents = new Set(["Africa", "Americas", "Asia", "Europe", "Oceania"]);
 
+// Variable pour garder la trace de la bulle sélectionnée
+let selectedBubble = null;
+
 // Échelles calculées selon les filtres de continents actifs
 let filteredMaxParticipants = {Summer: 0, Winter: 0};
 let filteredMaxPopulation = {Summer: 0, Winter: 0};
@@ -633,6 +636,25 @@ const showTooltip = function(event, d) {
   const formattedParticipants = d3.format(",")(d.participants);
   const formattedMedals = d3.format(",")(d.medals);
   
+  // Créer la section des médailles avec icônes
+  let medalsHtml = '';
+  if (d.medals > 0) {
+    medalsHtml = `
+      <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+        <div style="font-weight: bold; margin-bottom: 6px;">Médailles (${formattedMedals} total) :</div>
+        ${d.gold > 0 ? `<div style="margin-top: 4px;">🥇 Or : ${d.gold}</div>` : ''}
+        ${d.silver > 0 ? `<div style="margin-top: 4px;">🥈 Argent : ${d.silver}</div>` : ''}
+        ${d.bronze > 0 ? `<div style="margin-top: 4px;">🥉 Bronze : ${d.bronze}</div>` : ''}
+      </div>
+    `;
+  } else {
+    medalsHtml = `
+      <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+        <div><strong>🏅 Médailles:</strong> ${formattedMedals}</div>
+      </div>
+    `;
+  }
+  
   tooltip
     .style("opacity", 1)
     .html(`
@@ -646,11 +668,9 @@ const showTooltip = function(event, d) {
         <strong>👥 Participants:</strong> ${formattedParticipants}
       </div>
       <div style="margin-top: 4px;">
-        <strong>🏅 Médailles:</strong> ${formattedMedals}
-      </div>
-      <div style="margin-top: 4px;">
         <strong>🌍 Population:</strong> ${formattedPopulation}
       </div>
+      ${medalsHtml}
     `)
     .style("left", (event.pageX + 15) + "px")
     .style("top", (event.pageY - 28) + "px")
@@ -799,6 +819,12 @@ function setupZoom() {
     .on("mouseup", function() {
       d3.select(this).style("cursor", "grab");
     })
+    .on("click", function(event) {
+      // Déselectionner la bulle si on clique sur le fond
+      if (event.target === this && selectedBubble) {
+        resetSelectedBubble();
+      }
+    })
     .call(zoomBehavior);
   
   // Ensure proper z-order: bubbles < masking rectangles < axes < labels
@@ -838,6 +864,46 @@ function resetZoom() {
   }
 }
 
+// Fonction pour réinitialiser la bulle sélectionnée
+function resetSelectedBubble() {
+  if (selectedBubble) {
+    const bubbleElement = d3.select(selectedBubble);
+    const bubbleData = bubbleElement.datum();
+    
+    // Retirer le style de sélection
+    bubbleElement
+      .style("filter", null);
+    
+    // Réorganiser toutes les bulles dans l'ordre de tri (par population)
+    bubblesGroup.selectAll("circle")
+      .sort((a, b) => b.population - a.population);
+    
+    selectedBubble = null;
+  }
+}
+
+// Fonction pour sélectionner une bulle
+function selectBubble(element, d) {
+  // Si on clique sur la bulle déjà sélectionnée, on la déselectionne
+  if (selectedBubble === element) {
+    resetSelectedBubble();
+    return;
+  }
+  
+  // Réinitialiser la bulle précédemment sélectionnée
+  resetSelectedBubble();
+  
+  // Sélectionner la nouvelle bulle
+  selectedBubble = element;
+  
+  // Mettre la bulle au premier plan
+  d3.select(element).raise();
+  
+  // Appliquer un style visuel pour montrer la sélection (sans agrandir la bordure)
+  d3.select(element)
+    .style("filter", "drop-shadow(0 0 8px rgba(0,0,0,0.5))");
+}
+
 // Function to create or update flag patterns
 function createFlagPattern(noc) {
   const patternId = `flag-${noc}`;
@@ -866,6 +932,9 @@ function createFlagPattern(noc) {
 }
 
 function updateChart(selectedYear, season) {
+  // Réinitialiser la sélection lors du changement de données
+  resetSelectedBubble();
+  
   // Utilisation des fonctions de operations.js pour préparer les données
   const chartData = ops.prepareChartData(athleteData, populationData, selectedYear, season);
   let combinedData = chartData.data;
@@ -969,6 +1038,10 @@ function updateChart(selectedYear, season) {
     .on("mouseover", showTooltip)
     .on("mousemove", moveTooltip)
     .on("mouseleave", hideTooltip)
+    .on("click", function(event, d) {
+      event.stopPropagation(); // Empêche la propagation au zoomRect
+      selectBubble(this, d);
+    })
     .transition()
     .duration(400)
     .attr("cx", d => xScale(d.participants))
