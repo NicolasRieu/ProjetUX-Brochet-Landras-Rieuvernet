@@ -475,23 +475,17 @@ ops.loadData(
     const minYear = d3.min(availableYears);
     const maxYear = d3.max(availableYears);
     
+    // Configurer le slider pour qu'il utilise des indices au lieu des années réelles
     yearSlider
-      .attr("min", minYear)
-      .attr("max", maxYear)
-      .property("value", minYear);
+      .attr("min", 0)
+      .attr("max", availableYears.length - 1)
+      .attr("step", 1)
+      .property("value", 0);
     
     yearDisplay.text(minYear);
     
-    // Ajouter des datalist pour les années disponibles
-    let datalistId = "year-options";
-    d3.select("#" + datalistId).remove();
-    
-    const datalist = d3.select("body").append("datalist").attr("id", datalistId);
-    yearSlider.attr("list", datalistId);
-    
-    availableYears.forEach(year => {
-      datalist.append("option").attr("value", year);
-    });
+    // Supprimer l'ancien datalist s'il existe
+    d3.select("#year-options").remove();
     
     return minYear;
   }
@@ -499,18 +493,22 @@ ops.loadData(
   // Initialiser le slider pour la saison Summer
   const initialYear = updateSliderForSeason(currentSeason);
   
+  // Fonction pour obtenir l'année à partir de l'index du slider
+  function getYearFromSliderIndex() {
+    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
+    const index = +yearSlider.property("value");
+    return availableYears[index];
+  }
+  
   // Fonction pour obtenir l'index de l'année courante
   function getCurrentYearIndex() {
-    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
-    const currentYear = +yearSlider.property("value");
-    return availableYears.indexOf(currentYear);
+    return +yearSlider.property("value");
   }
   
   // Fonction pour mettre à jour les boutons de navigation
   function updateNavigationButtons() {
     const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
-    const currentYear = +yearSlider.property("value");
-    const currentIndex = availableYears.indexOf(currentYear);
+    const currentIndex = getCurrentYearIndex();
     
     d3.select("#prevBtn").property("disabled", currentIndex <= 0);
     d3.select("#nextBtn").property("disabled", currentIndex >= availableYears.length - 1);
@@ -518,24 +516,20 @@ ops.loadData(
   
   // Update chart when slider changes
   yearSlider.on("input", function() {
-    const selectedYear = +this.value;
-    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
-    // Find closest available year using operations.js
-    const closestYear = ops.findClosestYear(availableYears, selectedYear);
-    yearDisplay.text(closestYear);
-    updateChart(closestYear, currentSeason);
+    const selectedYear = getYearFromSliderIndex();
+    yearDisplay.text(selectedYear);
+    updateChart(selectedYear, currentSeason);
     updateNavigationButtons();
   });
   
   // Bouton précédent
   d3.select("#prevBtn").on("click", function() {
-    const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
-    const currentYear = +yearSlider.property("value");
-    const currentIndex = availableYears.indexOf(currentYear);
+    const currentIndex = getCurrentYearIndex();
     
     if (currentIndex > 0) {
-      const newYear = availableYears[currentIndex - 1];
-      yearSlider.property("value", newYear);
+      const newIndex = currentIndex - 1;
+      yearSlider.property("value", newIndex);
+      const newYear = getYearFromSliderIndex();
       yearDisplay.text(newYear);
       updateChart(newYear, currentSeason);
       updateNavigationButtons();
@@ -545,12 +539,12 @@ ops.loadData(
   // Bouton suivant
   d3.select("#nextBtn").on("click", function() {
     const availableYears = currentSeason === "Summer" ? summerYears : winterYears;
-    const currentYear = +yearSlider.property("value");
-    const currentIndex = availableYears.indexOf(currentYear);
+    const currentIndex = getCurrentYearIndex();
     
     if (currentIndex < availableYears.length - 1) {
-      const newYear = availableYears[currentIndex + 1];
-      yearSlider.property("value", newYear);
+      const newIndex = currentIndex + 1;
+      yearSlider.property("value", newIndex);
+      const newYear = getYearFromSliderIndex();
       yearDisplay.text(newYear);
       updateChart(newYear, currentSeason);
       updateNavigationButtons();
