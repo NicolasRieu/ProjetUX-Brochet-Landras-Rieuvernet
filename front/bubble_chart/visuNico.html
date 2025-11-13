@@ -637,10 +637,10 @@ const showTooltip = function(event, d) {
     .style("opacity", 1)
     .html(`
       <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 6px;">
-        ${d.noc}
+        ${d.countryName}
       </div>
       <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-bottom: 6px;">
-        ${d.continent}
+        ${d.continent} (${d.noc})
       </div>
       <div style="margin-top: 4px;">
         <strong>👥 Participants:</strong> ${formattedParticipants}
@@ -764,7 +764,7 @@ function initializeChart() {
   // Initialize color scale
   colorScale = d3.scaleOrdinal()
     .domain(["Africa", "Americas", "Asia", "Europe", "Oceania", "Unknown"])
-    .range(["#9b59b6", "#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#95a5a6"]);
+    .range(["#e74c3c", "#3498db", "#f39c12", "#2ecc71", "#9b59b6", "#95a5a6"]);
   
   // Note: Les rectangles de masquage sont maintenant gérés dans le groupe svg
   // (x-axis-mask et y-axis-mask) pour masquer les bulles qui débordent
