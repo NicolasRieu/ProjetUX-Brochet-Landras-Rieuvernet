@@ -33,8 +33,6 @@ si valeurs aberrantes → signaler
 # Validation des codes pays
 nb_codes_correspondants = vérifier_mapping(athlete_NOC, population_Code)
 si taux_correspondance < 90% → signaler
-
-produire rapport("validation_report")
 ```
 
 ---
@@ -42,7 +40,7 @@ produire rapport("validation_report")
 ## 3. Nettoyage
 - Supprimer les doublons.
 - **Harmoniser les codes pays (`NOC`)** : Conversion des codes IOC (Comité International Olympique) vers les codes ISO 3166-1 alpha-3 pour assurer la cohérence entre les datasets.
-  - Création d'un mapping automatique IOC → ISO (ex: `ALG` → `DZA` pour l'Algérie, `URS` → `RUS` pour l'URSS)
+  - Création d'un mapping automatique IOC → ISO (ex: `ALG` → `DZA` pour l'Algérie, `URS` → `RUS` pour l'URSS...)
   - 72 mappings manuels + 130 mappings automatiques = 202 codes convertis
   - Taux de correspondance : **96.9%** des pays alignés (amélioration continue)
   - Vérification de la correspondance entre les deux datasets

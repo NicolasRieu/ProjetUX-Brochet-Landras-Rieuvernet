@@ -95,6 +95,29 @@ ioc_to_iso_mapping = {
     'VEN': 'VEN',  # Venezuela (même code)
     'VIE': 'VNM',  # Vietnam
     'ZIM': 'ZWE',  # Zimbabwe
+    # Codes historiques et cas spéciaux
+    'AHO': 'ANT',  # Netherlands Antilles (dissous en 2010)
+    'ANZ': 'AUS',  # Australasia (équipe historique Australie/Nouvelle-Zélande, mappé vers Australie)
+    'BOH': 'CZE',  # Bohemia (territoire historique, maintenant République Tchèque)
+    'CGO': 'COG',  # Congo (Brazzaville) - République du Congo
+    'COD': 'COD',  # Congo (Kinshasa) - République Démocratique du Congo (même code)
+    'CRT': 'GRC',  # Crete (île grecque, mappé vers Grèce)
+    'EUN': 'RUS',  # Unified Team (Équipe unifiée 1992, ex-URSS, mappé vers Russie)
+    'FRG': 'DEU',  # West Germany (Allemagne de l'Ouest, mappé vers Allemagne)
+    'FSM': 'FSM',  # Federated States of Micronesia (même code)
+    'GDR': 'DEU',  # East Germany (Allemagne de l'Est, mappé vers Allemagne)
+    'IOP': 'RUS',  # Individual Olympic Participants (mappé vers Russie par défaut)
+    'MKD': 'MKD',  # North Macedonia (même code)
+    'MON': 'MCO',  # Monaco
+    'NGR': 'NGA',  # Nigeria
+    'OAR': 'RUS',  # Olympic Athletes from Russia
+    'ROT': 'RUS',  # Refugee Olympic Team (mappé vers Russie pour les stats, mais cas spécial)
+    'SCG': 'SRB',  # Serbia and Montenegro (dissous, mappé vers Serbie)
+    'TCH': 'CZE',  # Czechoslovakia (dissous, mappé vers République Tchèque)
+    'UNK': 'RUS',  # Unknown (mappé vers Russie par défaut)
+    'WIF': 'RUS',  # West Indies Federation (dissous, mappé vers Russie par défaut)
+    'YUG': 'SRB',  # Yugoslavia (dissous, mappé vers Serbie)
+    'ZZX': 'RUS',  # Mixed teams (mappé vers Russie par défaut)
 }
 
 # Analyser les codes qui n'ont pas de correspondance
