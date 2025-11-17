@@ -1,37 +1,242 @@
+
 <!DOCTYPE html>
-<meta charset="utf-8">
-
-<!-- Load d3.js -->
-<script src="https://d3js.org/d3.v6.js"></script>
-
-<!-- Create an element where the map will take place -->
-<svg id="my_dataviz" width="960" height="600"></svg>
-
-<html lang="en">
-  <head><meta charset="utf-8">
-  <title>Choropleth map</title></head>
-  <div class="controls">
-  <div class="control-row">
-    <label for="yearSlider">Année:</label>
-    <div class="slider-container">
-      <input type="range" id="yearSlider" min="1896" max="2016" value="2016" step="2">
-      <span id="yearDisplay">2016</span>
-    </div>
-  </div>
-  
-  <div class="control-row">
-    <label>Saison:</label>
-    <div class="season-buttons">
-      <button class="season-btn active" data-season="Summer">Été (Summer)</button>
-      <button class="season-btn" data-season="Winter">Hiver (Winter)</button>
-    </div>
-  </div>
-</div>
-  <body>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Carte Choroplèthe - Médailles Olympiques</title>
     <script src="https://d3js.org/d3.v6.js"></script>
-    <svg id="my_dataviz" width="960" height="600"></svg>
-    <script src="map.js"></script>
+    <style>
+        body { margin: 0; font-family: sans-serif; overflow: hidden; }
+        #my_dataviz { border: 1px solid #ccc; }
+        #tooltip {
+            position: absolute;
+            background: linear-gradient(135deg, #ffffff 0%, #f3f8ff 100%);
+            border: solid 1px #b3d4ff;
+            border-radius: 10px;
+            padding: 10px;
+            pointer-events: none; /* Allows mouse events to pass through to the map */
+            opacity: 0;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+            font-size: 14px;
+            color: #0b3d91;
+            font-weight: 600;
+        }
+        .Country:hover {
+            opacity: 1 !important;
+            stroke: black !important;
+            stroke-width: 1.5px;
+        }
+        .Country.active {
+            stroke: black;
+            stroke-width: 2px;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-btn {
+            padding: 6px 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background-color: #fff;
+            cursor: pointer;
+        }
+        .nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .slider-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #yearSlider {
+            flex-grow: 1;
+        }
+        .season-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .season-btn {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .season-btn.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .season-btn:not(.active):hover {
+            background-color: #e0e0e0;
+        }
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 15px;
+            margin-right: 8px;
+            border: 1px solid #ccc;
+        }
+        #bar-charts-container {
+            position: absolute;
+            top: 50%; /* Center vertically */
+            left: 50%; /* Center horizontally */
+            transform: translate(-50%, -50%); /* Adjust for element size */
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            gap: 10px;
+            width: 300px; /* Fixed width for the charts */
+            z-index: 1000; /* Ensure it's above other elements */
+        }
+        #bar-charts-container h3 {
+            margin-top: 0;
+            text-align: center;
+            color: #333;
+        }
+        .chart-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .chart-label {
+            font-weight: bold;
+            width: 80px; /* Fixed width for labels */
+        }
+        .bar-container {
+            flex-grow: 1;
+            height: 20px; /* Fixed height for bars */
+            background-color: #eee;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .bar {
+            height: 100%;
+            background-color: #007bff;
+            text-align: right;
+            color: white;
+            line-height: 20px;
+            padding-right: 5px;
+            font-size: 12px;
+            box-sizing: border-box;
+        }
 
-    
-  </body>
+        /* Bottom-left info panel */
+        #info-panel {
+            position: absolute;
+            right: 20px;
+            bottom: 40px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fffb 100%);
+            border: 1px solid #cfe9da;
+            border-radius: 12px;
+            padding: 12px 14px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+            min-width: 240px;
+            max-width: 320px;
+            font-size: 13px;
+            color: #2d3a3a;
+        }
+        #info-panel h4 {
+            margin: 0 0 6px 0;
+            font-size: 14px;
+            color: #116b5b;
+        }
+        #info-panel .row { display: flex; justify-content: space-between; margin: 3px 0; }
+        #info-panel .label { color: #4a5a5a; }
+        #info-panel .value { font-weight: 600; color: #0f4c81; }
+    </style>
+</head>
+<body>
+    <svg id="my_dataviz"></svg>
+
+    <div id="tooltip"></div>
+
+    <div id="info-panel">
+        <h4 id="info-country">Pays: —</h4>
+        <div class="row"><span class="label">Édition:</span><span class="value" id="info-edition">—</span></div>
+        <div class="row"><span class="label">Population:</span><span class="value" id="info-pop">—</span></div>
+        <div class="row"><span class="label">Participations JO:</span><span class="value" id="info-appearances">—</span></div>
+        <div class="row"><span class="label">Médailles:</span><span class="value" id="info-medals">—</span></div>
+        <div class="row"><span class="label">Participants:</span><span class="value" id="info-participants">—</span></div>
+        <div class="row"><span class="label">Ratio Médaille/Pop (100k):</span><span class="value" id="info-ratio">—</span></div>
+    </div>
+
+    <div class="controls">
+        <div class="control-row">
+            <label for="yearSlider">Année:</label>
+            <div class="slider-container">
+                <button class="nav-btn" id="prevBtn">◀</button>
+                <input type="range" id="yearSlider" min="1896" max="2016" value="2016" step="2">
+                <button class="nav-btn" id="nextBtn">▶</button>
+                <span id="yearDisplay">2016</span>
+            </div>
+        </div>
+        <div class="control-row">
+            <label>Saison:</label>
+            <div class="season-buttons">
+                <button class="season-btn active" data-season="Summer">Été</button>
+                <button class="season-btn" data-season="Winter">Hiver</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="legend" id="legend">
+        <h4>Ratio Médaille / Population</h4>
+        <!-- Legend items will be populated by JS -->
+    </div>
+
+    <div id="bar-charts-container">
+        <h3 id="country-bar-chart-title"></h3>
+        <div class="chart-row">
+            <div class="chart-label">Médailles:</div>
+            <div class="bar-container">
+                <div id="medals-bar" class="bar"></div>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-label">Participants:</div>
+            <div class="bar-container">
+                <div id="participants-bar" class="bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="map.JS"></script>
+</body>
 </html>
+
