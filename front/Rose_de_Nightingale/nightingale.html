@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Analyse Olympique - Rose de Nightingale</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #main-wrapper {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            gap: 8px;
+            background: white;
+            border-radius: 6px;
+            margin: 4px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        #header-section {
+            flex: 0 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            padding: 12px 16px;
+            color: white;
+            gap: 16px;
+        }
+
+        h1 {
+            font-size: 1.4em;
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            flex: 1;
+        }
+
+        #controls-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-label {
+            font-weight: 600;
+            white-space: nowrap;
+            font-size: 0.75em;
+            opacity: 0.9;
+        }
+
+        #timeline {
+            width: 200px;
+            height: 6px;
+            cursor: pointer;
+            border-radius: 2px;
+            accent-color: white;
+        }
+
+        #year-display {
+            min-width: 50px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        #content-section {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #left-section {
+            flex: 0 0 350px;
+            background: white;
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        .section-title {
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        #countries-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .country-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px;
+            background: #f7fafc;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1.5px solid transparent;
+            flex-shrink: 0;
+            font-size: 0.75em;
+        }
+
+        .country-item:hover {
+            background: #edf2f7;
+            border-color: #667eea;
+            transform: translateX(2px);
+        }
+
+        .country-item.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+        }
+
+        .country-flag {
+            font-size: 12px;
+            min-width: 16px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .country-name {
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .country-medals {
+            font-weight: 700;
+            color: #ffd700;
+            min-width: 22px;
+            text-align: right;
+        }
+
+        #center-section {
+            flex: 1;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 0;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            position: relative;
+        }
+
+        #visualization {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            min-height: 0;
+            width: 100%;
+            cursor: grab;
+            background: white;
+        }
+
+        #visualization:active {
+            cursor: grabbing;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #right-section {
+            flex: 0 0 280px;
+            background: white;
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            justify-content: center;
+            align-items: stretch;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            background: #f7fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .filter-group:first-child {
+            margin-bottom: 30px;
+        }
+
+        .filter-group-title {
+            font-weight: 700;
+            font-size: 0.85em;
+            color: #2d3748;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-btn {
+            padding: 7px 10px;
+            border: 1.5px solid #cbd5e0;
+            background: white;
+            color: #2d3748;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            font-size: 0.75em;
+            white-space: nowrap;
+            text-align: left;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+        }
+
+        .filter-btn:hover {
+            background: #f0f4ff;
+            border-color: #667eea;
+        }
+
+        .filter-btn.active:hover {
+            background: #764ba2;
+        }
+
+        .rose-petal {
+            fill-opacity: 0.8;
+            stroke: white;
+            stroke-width: 1;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .rose-petal:hover {
+            fill-opacity: 0.95;
+            stroke-width: 1.5;
+            filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.25));
+        }
+
+        .rose-petal.highlighted {
+            fill-opacity: 1;
+            stroke: #000;
+            stroke-width: 1.5;
+            filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.35));
+        }
+
+        .rose-label {
+            font-size: 8px;
+            font-weight: 600;
+            text-anchor: middle;
+            fill: #2d3748;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 8px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 1000;
+            max-width: 260px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            line-height: 1.4;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip strong {
+            color: #ffd700;
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.9em;
+        }
+
+        .loading, .no-data {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.95em;
+            color: #718096;
+        }
+
+        .no-data {
+            background: #fff5f5;
+            border: 2px dashed #fc8181;
+            border-radius: 6px;
+            color: #c53030;
+            font-weight: 600;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+    </style>
+</head>
+<body>
+<div id="main-wrapper">
+    <div id="header-section">
+        <h1>🏅 Analyse Olympique - Rose de Nightingale</h1>
+        <div id="controls-section">
+            <div class="control-row">
+                <span class="control-label">📅</span>
+                <input type="range" id="timeline" min="1896" max="2016" value="2016" step="4">
+                <div id="year-display">2016</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="content-section">
+        <div id="left-section">
+            <div class="section-title">🥇 Pays (Classement)</div>
+            <div id="countries-list"></div>
+        </div>
+
+        <div id="center-section">
+            <div id="visualization">
+                <div class="loading">Chargement des données...</div>
+            </div>
+        </div>
+
+        <div id="right-section">
+            <div class="filter-group">
+                <div class="filter-group-title">🌍 Continents</div>
+                <div class="filter-buttons">
+                    <button class="filter-btn continent-btn active" data-value="all">Tous</button>
+                    <button class="filter-btn continent-btn" data-value="Africa">Afrique</button>
+                    <button class="filter-btn continent-btn" data-value="Asia">Asie</button>
+                    <button class="filter-btn continent-btn" data-value="Europe">Europe</button>
+                    <button class="filter-btn continent-btn" data-value="Americas">Amérique</button>
+                    <button class="filter-btn continent-btn" data-value="Oceania">Océanie</button>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <div class="filter-group-title">🏅 Saisons</div>
+                <div class="filter-buttons">
+                    <button class="filter-btn season-btn active" data-value="both">Été+Hiver</button>
+                    <button class="filter-btn season-btn" data-value="Summer">Été</button>
+                    <button class="filter-btn season-btn" data-value="Winter">Hiver</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script src = "nightingaleRose.js"></script>
+</body>
+</html>
