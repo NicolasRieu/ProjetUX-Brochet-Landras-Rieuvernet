@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse des Jeux Olympiques - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 30px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        .visualizations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .viz-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .viz-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.25);
+        }
+
+        .viz-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .viz-preview {
+            height: 250px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5em;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .viz-preview::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+        }
+
+        .viz-content {
+            padding: 25px;
+        }
+
+        .viz-title {
+            font-size: 1.6em;
+            color: #2d3748;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .viz-description {
+            color: #718096;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        .viz-features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .viz-features li {
+            color: #4a5568;
+            padding: 6px 0;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .viz-features li::before {
+            content: '✓';
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .viz-button {
+            display: inline-block;
+            width: 100%;
+            padding: 14px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .viz-button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .viz-button:active {
+            transform: scale(0.98);
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            font-size: 0.75em;
+            color: #667eea;
+            font-weight: 600;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .tags {
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .subtitle {
+                font-size: 1em;
+            }
+
+            .visualizations-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animation d'entrée */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .viz-card {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .viz-card:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+
+        .viz-card:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .viz-card:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏅 Analyse des Jeux Olympiques</h1>
+            <p class="subtitle">Explorez les données olympiques à travers trois visualisations interactives</p>
+        </header>
+
+        <div class="visualizations-grid">
+            <!-- Rose de Nightingale -->
+            <div class="viz-card" onclick="window.location.href='Rose_de_Nightingale/nightingale.html'">
+                <div class="viz-preview">🌹</div>
+                <div class="viz-content">
+                    <h2 class="viz-title">Rose de Nightingale</h2>
+                    <div class="tags">
+                        <span class="badge">Médailles</span>
+                        <span class="badge">Pays</span>
+                        <span class="badge">Temporel</span>
+                    </div>
+                    <p class="viz-description">
+                        Visualisation radiale inspirée de Florence Nightingale pour comparer les performances olympiques des pays à travers le temps.
+                    </p>
+                    <ul class="viz-features">
+                        <li>Timeline interactive (1896-2016)</li>
+                        <li>Filtres par continent et saison</li>
+                        <li>Classement des pays par médailles</li>
+                        <li>Design élégant et intuitif</li>
+                    </ul>
+                    <a href="Rose_de_Nightingale/nightingale.html" class="viz-button">
+                        Explorer la Rose →
+                    </a>
+                </div>
+            </div>
+
+            <!-- Carte Choroplèthe -->
+            <div class="viz-card" onclick="window.location.href='map_choropleth/map.html'">
+                <div class="viz-preview">🗺️</div>
+                <div class="viz-content">
+                    <h2 class="viz-title">Carte Choroplèthe</h2>
+                    <div class="tags">
+                        <span class="badge">Géographique</span>
+                        <span class="badge">Mondial</span>
+                        <span class="badge">Comparatif</span>
+                    </div>
+                    <p class="viz-description">
+                        Carte mondiale interactive montrant la distribution géographique des performances olympiques par pays.
+                    </p>
+                    <ul class="viz-features">
+                        <li>Vue d'ensemble géographique</li>
+                        <li>Évolution temporelle</li>
+                        <li>Filtres été/hiver</li>
+                        <li>Intensité par couleur</li>
+                    </ul>
+                    <a href="map_choropleth/map.html" class="viz-button">
+                        Explorer la Carte →
+                    </a>
+                </div>
+            </div>
+
+            <!-- Bubble Chart -->
+            <div class="viz-card" onclick="window.location.href='bubble_chart/visuNico.html'">
+                <div class="viz-preview">🫧</div>
+                <div class="viz-content">
+                    <h2 class="viz-title">Bubble Chart</h2>
+                    <div class="tags">
+                        <span class="badge">Population</span>
+                        <span class="badge">Participants</span>
+                        <span class="badge">Multi-axes</span>
+                    </div>
+                    <p class="viz-description">
+                        Graphique à bulles corrélant population, participants et médailles olympiques pour une analyse multidimensionnelle.
+                    </p>
+                    <ul class="viz-features">
+                        <li>3 dimensions de données</li>
+                        <li>Zoom et pan interactifs</li>
+                        <li>Recherche de pays</li>
+                        <li>Animation temporelle</li>
+                    </ul>
+                    <a href="bubble_chart/visuNico.html" class="viz-button">
+                        Explorer les Bulles →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>📊 Projet UX - Analyse des Jeux Olympiques (1896-2016)</p>
+            <p>Brochet • Landras • Rieuvernet</p>
+        </footer>
+    </div>
+</body>
+</html>
