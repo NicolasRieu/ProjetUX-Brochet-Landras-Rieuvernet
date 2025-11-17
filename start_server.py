@@ -8,7 +8,7 @@ import http.server
 import socketserver
 import os
 
-PORT = 8000
+PORT = 8082
 
 # Change to the directory containing this script
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
