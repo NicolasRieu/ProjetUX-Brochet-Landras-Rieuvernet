@@ -29,6 +29,41 @@ Existe-t-il une corrélation entre le nombre d'habitant/le nombre de participati
  
 Tâches par types d'utilisateurs: ![](image/TasksByUser.png)
 
+# Datasets utilisés dans le projet
+
+## 1. Dataset Jeux Olympiques (1896-2016)
+
+| ID | Name | Sex | Age | Height | Weight | Team | **NOC** | Games | **Year** | **Season** | City | Sport | Event | **Medal** |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | A Dijiang | M | 24 | 180 | 80 | China | **CHN** | 1992 Summer | **1992** | **Summer** | Barcelona | Basketball | Basketball Men's Basketball | **(vide)** |
+| 4 | Edgar Lindenau Aabye | M | 34 | 195 | 90 | Denmark/Sweden | **DEN** | 1900 Summer | **1900** | **Summer** | Paris | Tug-Of-War | Tug-Of-War Men's | **Gold** |
+| 15 | John Smith | M | 28 | 175 | 70 | United States | **USA** | 1992 Summer | **1992** | **Summer** | Barcelona | Athletics | 4x100m Relay Men | **Gold** |
+| 16 | Michael Johnson | M | 25 | 178 | 72 | United States | **USA** | 1992 Summer | **1992** | **Summer** | Barcelona | Athletics | 4x100m Relay Men | **Gold** |
+| 17 | Carl Lewis | M | 31 | 188 | 80 | United States | **USA** | 1992 Summer | **1992** | **Summer** | Barcelona | Athletics | 4x100m Relay Men | **Gold** |
+| 18 | Dennis Mitchell | M | 27 | 175 | 68 | United States | **USA** | 1992 Summer | **1992** | **Summer** | Barcelona | Athletics | 4x100m Relay Men | **Gold** |
+| 234 | Aleksandr Ivanov | M | 26 | 182 | 78 | Soviet Union | **URS** | 1988 Winter | **1988** | **Winter** | Calgary | Ice Hockey | Ice Hockey Men | **Gold** |
+| 567 | Vladimir Petrov | M | 29 | 185 | 83 | Russia | **RUS** | 1994 Winter | **1994** | **Winter** | Lillehammer | Ice Hockey | Ice Hockey Men | **(vide)** |
+
+**Colonnes conservées** : NOC, Year, Season, Medal, ID
+
+## 2. Dataset Population mondiale (-10000-2100)
+
+| Entity | **Code** | **Year** | **Population (historical)** | Continent |
+|---|---|---|---|---|
+| Afghanistan | **AFG** | **1900** | **4,707,744** | Asia |
+| Afghanistan | **AFG** | **1992** | **14,889,000** | Asia |
+| Afghanistan | **AFG** | **2016** | **34,656,032** | Asia |
+| China | **CHN** | **1992** | **1,164,970,000** | Asia |
+| Denmark | **DNK** | **1900** | **2,450,000** | Europe |
+| Soviet Union | **(absent)** | **1988** | **(absent)** | **(absent)** |
+| Russia | **RUS** | **1994** | **148,394,000** | Europe |
+| United States | **USA** | **1850** | **23,261,000** | North America |
+| United States | **USA** | **1992** | **256,894,000** | North America |
+| United States | **USA** | **2020** | **331,003,000** | North America |
+
+**Colonnes conservées** : Code, Year, Population (historical)
+
+
 # Visualisation de Romain Brochet
 
 ### Technique de visualisation

@@ -19,9 +19,39 @@ const countriesList = d3.select("#countries-list");
 const tooltip = d3.select("#tooltip");
 
 function getCountryFlagEmoji(code) {
-    if (!code || code.length !== 2) return '🏳️';
-    const codePoints = code.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0));
-    return String.fromCodePoint(...codePoints);
+    const countryCodeMap = {
+        'USA': 'US', 'GBR': 'GB', 'FRA': 'FR', 'GER': 'DE', 'ITA': 'IT',
+        'ESP': 'ES', 'NED': 'NL', 'BEL': 'BE', 'SWE': 'SE', 'NOR': 'NO',
+        'RUS': 'RU', 'CHN': 'CN', 'JPN': 'JP', 'IND': 'IN', 'BRA': 'BR',
+        'CAN': 'CA', 'AUS': 'AU', 'MEX': 'MX', 'ARG': 'AR', 'KOR': 'KR',
+        'POL': 'PL', 'UKR': 'UA', 'TUR': 'TR', 'GRE': 'GR', 'POR': 'PT',
+        'CZE': 'CZ', 'HUN': 'HU', 'ROU': 'RO', 'BUL': 'BG', 'SRB': 'RS',
+        'CRO': 'HR', 'SVN': 'SI', 'SVK': 'SK', 'AUT': 'AT', 'CHE': 'CH',
+        'DEN': 'DK', 'FIN': 'FI', 'ISL': 'IS', 'IRL': 'IE', 'ZAF': 'ZA',
+        'EGY': 'EG', 'MAR': 'MA', 'TUN': 'TN', 'KEN': 'KE', 'NGR': 'NG',
+        'ISR': 'IL', 'SAU': 'SA', 'PAK': 'PK', 'BGD': 'BD', 'THA': 'TH',
+        'MYS': 'MY', 'SGP': 'SG', 'IDN': 'ID', 'PHL': 'PH', 'VIE': 'VN',
+        'NZL': 'NZ', 'FIJ': 'FJ', 'CUB': 'CU', 'JAM': 'JM', 'DOM': 'DO',
+        'TTO': 'TT', 'BAH': 'BS', 'BER': 'BM', 'URY': 'UY', 'PAR': 'PY',
+        'CHL': 'CL', 'COL': 'CO', 'PER': 'PE', 'VEN': 'VE', 'ECU': 'EC',
+        'BOL': 'BO', 'GUY': 'GY', 'SUR': 'SR', 'PUR': 'PR',
+        'AZE': 'AZ', 'KAZ': 'KZ', 'UZB': 'UZ', 'TKM': 'TM', 'KGZ': 'KG',
+        'ETH': 'ET', 'NGA': 'NG', 'CIV': 'CI', 'GRN': 'GD', 'KEN': 'KE',
+        'TAJ': 'TJ', 'GEO': 'GE', 'ARM': 'AM',
+
+        'ALG': 'DZ', 'QAT': 'QA', 'NER': 'NE', 'GRD': 'GD', 'TJK': 'TJ',
+        'IRN': 'IR', 'JOR': 'JO', 'XKX': 'XK', 'BDI': 'BI', 'BLR': 'BY',
+        'TWN': 'TW', 'MNG': 'MN', 'BHR': 'BH', 'LTU': 'LT', 'EST': 'EE'
+    };
+
+    const isoCode = countryCodeMap[code];
+    if (!isoCode) return '🏳️';
+
+    return isoCode
+        .toUpperCase()
+        .split('')
+        .map(char => String.fromCodePoint(127397 + char.charCodeAt(0)))
+        .join('');
 }
 
 function getPopulationCategory(pop) {
@@ -46,6 +76,7 @@ function getCategoryColor(cat) {
 function getCountriesData(year, season, continent) {
     const countryData = new Map();
     const participatingAthletes = new Map();
+    const allAthletes = new Map();
 
     athleteData.forEach(d => {
         if (+d.Year !== year) return;
@@ -65,9 +96,15 @@ function getCountriesData(year, season, continent) {
                 silver: 0,
                 bronze: 0,
                 total: 0,
+                totalAthletes: 0,
                 population: nocPopulation.get(`${noc}_${year}`) || 0
             });
         }
+
+        if (!allAthletes.has(noc)) {
+            allAthletes.set(noc, new Set());
+        }
+        allAthletes.get(noc).add(d.ID);
 
         if (!participatingAthletes.has(noc)) {
             participatingAthletes.set(noc, new Set());
@@ -84,6 +121,7 @@ function getCountriesData(year, season, continent) {
     const result = [];
     countryData.forEach(country => {
         country.total = participatingAthletes.get(country.noc).size;
+        country.totalAthletes = allAthletes.get(country.noc) ? allAthletes.get(country.noc).size : 0;
         const totalMedals = country.gold + country.silver + country.bronze;
         country.medalRatio = country.total > 0 ? (totalMedals / country.total) * 100 : 0;
         country.popCategory = getPopulationCategory(country.population);
@@ -102,7 +140,7 @@ function drawCountriesList(countries) {
         .attr("class", "country-item")
         .classed("selected", d => selectedCountries.includes(d.noc))
         .html(d => {
-            const flag = getCountryFlagEmoji(d.noc.substring(0, 2).toLowerCase());
+            const flag = getCountryFlagEmoji(d.noc);
             const medals = d.gold + d.silver + d.bronze;
             return `<div class="country-flag">${flag}</div>
                         <div class="country-name" title="${d.name}">${d.name}</div>
@@ -225,7 +263,8 @@ function drawNightingaleRose(countries) {
                 .html(`<strong>${d.name}</strong><br/>
 Population: ${(d.population / 1e6).toFixed(1)}M (${d.popLabel})<br/>
 🥇 Or: ${d.gold} | 🥈 Silver: ${d.silver} | 🥉 Bronze: ${d.bronze}<br/>
-Total: ${d.medals} médailles sur ${d.total} athlètes<br/>
+Médailles: ${d.medals}<br/>
+Athlètes participants: ${d.totalAthletes}<br/>
 Réussite: ${d.medalRatio.toFixed(2)}%`);
         })
         .on("mousemove", function(e) {
@@ -262,6 +301,7 @@ Réussite: ${d.medalRatio.toFixed(2)}%`);
             .attr("class", "rose-label")
             .attr("x", x)
             .attr("y", y)
+            .attr("dy", "0.3em")
             .attr("text-anchor", "middle")
             .attr("font-size", "8px")
             .attr("font-weight", "600")
