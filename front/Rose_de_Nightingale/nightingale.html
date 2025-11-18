@@ -4,11 +4,13 @@
     <meta charset="utf-8">
     <title>Analyse Olympique - Rose de Nightingale</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/country-flag-emoji@1.5.9/index.min.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-size: 20px;
         }
 
         body {
@@ -109,7 +111,7 @@
             font-weight: 700;
             color: #2d3748;
             margin-bottom: 8px;
-            font-size: 0.9em;
+            font-size: 17px;
             border-bottom: 2px solid #667eea;
             padding-bottom: 6px;
             flex-shrink: 0;
@@ -121,6 +123,7 @@
             display: flex;
             flex-direction: column;
             gap: 2px;
+            font-size: 27px;
         }
 
         .country-item {
@@ -231,6 +234,7 @@
             background: #f7fafc;
             border-radius: 6px;
             border: 1px solid #e2e8f0;
+            font-size: 27px;
         }
 
         .filter-group:first-child {
@@ -320,7 +324,7 @@
             color: white;
             padding: 8px 10px;
             border-radius: 5px;
-            font-size: 0.8em;
+            font-size: 13px;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.15s;
@@ -383,7 +387,7 @@
         <div id="controls-section">
             <div class="control-row">
                 <span class="control-label">📅</span>
-                <input type="range" id="timeline" min="1896" max="2016" value="2016" step="4">
+                <input type="range" id="timeline" min="1900" max="2016" value="2016" step="4">
                 <div id="year-display">2016</div>
             </div>
         </div>
