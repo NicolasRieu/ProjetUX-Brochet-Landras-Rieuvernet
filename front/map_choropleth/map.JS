@@ -11,6 +11,7 @@ let latestPopulationByNOC = new Map(); // Map<NOC, latestPopulation>
 let currentYear = 2016;
 let currentSeason = "Summer";
 let currentView = "singleEdition"; // "singleEdition" or "allEditions"
+let lastSingleEditionSeason = "Summer"; // Track last season for toggling back
 
 // Available years by season
 let allYears = [];
@@ -35,7 +36,13 @@ const height = window.innerHeight - margin.top - margin.bottom;
 // SVG setup
 const svg = d3.select("#my_dataviz")
     .attr("width", width)
-    .attr("height", height);
+    .attr("height", height)
+    .on("click", function(event) {
+        // Reset zoom when clicking on background (not on a country)
+        if (event.target === this) {
+            resetZoom();
+        }
+    });
 
 // Group for the map paths
 const g = svg.append("g");
@@ -80,7 +87,8 @@ const barsLayer = g.append("g")
 
 // Tooltip
 const tooltip = d3.select("#tooltip");
-// Bottom-left info panel elements
+
+// Bottom-right info panel elements
 const infoCountry = d3.select("#info-country");
 const infoEdition = d3.select("#info-edition");
 const infoPop = d3.select("#info-pop");
@@ -88,6 +96,19 @@ const infoAppearances = d3.select("#info-appearances");
 const infoMedals = d3.select("#info-medals");
 const infoParticipants = d3.select("#info-participants");
 const infoRatio = d3.select("#info-ratio");
+
+// Debounce helper
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
 function setInfoPanel(feature) {
     if (!feature) {
@@ -410,29 +431,37 @@ function updateMap() {
 function handleZoom(event) {
     g.attr("transform", event.transform);
     currentZoomK = event.transform.k;
-    g.selectAll("path").style("stroke-width", 1 / event.transform.k + "px");
+    
+    // Adjust stroke width to maintain consistent appearance at all zoom levels
+    g.selectAll("path").style("stroke-width", Math.max(0.5, 1 / event.transform.k) + "px");
 
     // Hide tooltip immediately on any zoom interaction and debounce re-enable
     tooltip.style("opacity", 0);
     isZooming = true;
+    
     if (zoomIdleTimer) clearTimeout(zoomIdleTimer);
-    zoomIdleTimer = setTimeout(() => { isZooming = false; }, 150);
+    zoomIdleTimer = setTimeout(() => { 
+        isZooming = false; 
+    }, 150);
 
-    // Cache les graphiques si on dézoome ou déplace la carte
+    // Hide bar charts and bars layer when zooming out to initial state
     if (activeCountry.empty() || event.transform.k === 1) {
         barChartsContainer.style("display", "none");
         barsLayer.style("display", "none");
-    }
-    // Ensure bars stay on top during interactions
-    barsLayer.raise();
-    // Adjust bar group scaling around centroid so bars get smaller with zoom
-    if (!activeCountry.empty()) {
+    } else {
+        // Ensure bars stay on top during interactions
+        barsLayer.raise();
+        
+        // Adjust bar group scaling around centroid so bars maintain size relative to zoom
         const feat = activeCountry.datum();
         const geometryForView = getMetropolitanGeometry(feat) || feat;
         const centroid = pathGenerator.centroid(geometryForView);
         const group = barsLayer.select("g");
+        
         if (!group.empty()) {
-            group.attr("transform", `translate(${centroid[0]},${centroid[1]}) scale(${1/currentZoomK}) translate(${-centroid[0]},${-centroid[1]})`);
+            group.attr("transform", 
+                `translate(${centroid[0]},${centroid[1]}) scale(${1/currentZoomK}) translate(${-centroid[0]},${-centroid[1]})`
+            );
         }
     }
 }
@@ -441,12 +470,18 @@ function handleZoom(event) {
 function resetZoom() {
     activeCountry.classed("active", false);
     activeCountry = d3.select(null);
-    barChartsContainer.style("display", "none"); // Cache les graphiques
+    
+    // Hide bar charts and bars layer
+    barChartsContainer.style("display", "none");
     barsLayer.style("display", "none");
+    
+    // Clear info panel
+    setInfoPanel(null);
 
     isZooming = true;
     svg.style("pointer-events", "none");
     tooltip.style("opacity", 0);
+    
     svg.transition()
         .duration(750)
         .call(zoom.transform, d3.zoomIdentity)
@@ -578,15 +613,20 @@ function countryClick(event, d) {
     group
         .on("mouseover", function(evt) {
             if (isZooming) return;
-            // Hide map tooltip content and show detailed bars tooltip
+            // Show detailed bars tooltip
             tooltip.style("opacity", 1)
-                .html(`<b>${d.properties.name}</b><br>${valueText}`)
-                .style("left", (evt.pageX + 20) + "px")
-                .style("top", (evt.pageY - 28) + "px");
+                .html(`<b>${d.properties.name}</b><br>${valueText}`);
+            mouseMove(evt);
             setInfoPanel(d);
         })
-        .on("mousemove", function(evt) { if (isZooming) return; mouseMove(evt); })
-        .on("mouseleave", function() { if (isZooming) return; tooltip.style("opacity", 0); });
+        .on("mousemove", function(evt) { 
+            if (isZooming) return; 
+            mouseMove(evt); 
+        })
+        .on("mouseleave", function() { 
+            if (isZooming) return; 
+            tooltip.style("opacity", 0); 
+        });
 
     // Zoom logic
     const bounds = pathGenerator.bounds(geometryForView);
@@ -650,39 +690,75 @@ function getMetropolitanGeometry(feature) {
 function mouseOver(event, d) {
     if (isZooming) return;
     tooltip.style("opacity", 1);
+    
     // Remove contours from others and highlight the hovered
-    g.selectAll("path.Country").style("stroke", "transparent");
+    g.selectAll("path.Country").style("stroke", "none");
     d3.select(this)
-        .transition().duration(200).style("opacity", 1).style("stroke", "black").style("stroke-width", "1.5px");
+        .transition()
+        .duration(200)
+        .style("opacity", 1)
+        .style("stroke", "#333")
+        .style("stroke-width", "1.5px");
 
     const countryName = d.properties.name;
 
     // Tooltip: only country name (bars will override with details)
-    tooltip.html(`
-        <b>${countryName}</b>
-    `)
-        .style("left", (event.pageX + 20) + "px")
-        .style("top", (event.pageY - 28) + "px");
+    tooltip.html(`<b>${countryName}</b>`);
+    
+    // Use mouseMove for smart positioning
+    mouseMove(event);
 
-    // Update bottom-left info panel with full details
+    // Update bottom-right info panel with full details
     setInfoPanel(d);
 }
 
 function mouseMove(event) {
     if (isZooming) return;
+    
+    // Smart positioning to avoid going off-screen
+    const tooltipNode = tooltip.node();
+    if (!tooltipNode) return;
+    
+    const tooltipWidth = tooltipNode.offsetWidth;
+    const tooltipHeight = tooltipNode.offsetHeight;
+    const padding = 10;
+    
+    let left = event.pageX + 20;
+    let top = event.pageY - 28;
+    
+    // Adjust horizontal position if tooltip would go off right edge
+    if (left + tooltipWidth > window.innerWidth - padding) {
+        left = event.pageX - tooltipWidth - 20;
+    }
+    
+    // Adjust vertical position if tooltip would go off bottom edge
+    if (top + tooltipHeight > window.innerHeight - padding) {
+        top = window.innerHeight - tooltipHeight - padding;
+    }
+    
+    // Ensure tooltip doesn't go off top edge
+    if (top < padding) {
+        top = padding;
+    }
+    
     tooltip
-        .style("left", (event.pageX + 20) + "px")
-        .style("top", (event.pageY - 28) + "px");
+        .style("left", left + "px")
+        .style("top", top + "px");
 }
 
 // Mouseleave for tooltip
 function mouseLeave() {
     if (isZooming) return;
     tooltip.style("opacity", 0);
-    if (activeCountry.node() !== this) { // Only reset if not the active (zoomed) country
+    
+    // Only reset stroke if not the active (zoomed) country
+    if (activeCountry.node() !== this) {
         d3.select(this)
-            .transition().duration(200).style("stroke", "transparent"); // Retour à la normale
+            .transition()
+            .duration(200)
+            .style("stroke", "none");
     }
+    
     // Restore panel to active country if any, else clear
     if (!activeCountry.empty()) {
         setInfoPanel(activeCountry.datum());
@@ -723,78 +799,85 @@ function updateNavButtons() {
     nextBtn.property('disabled', idx < 0 || idx >= availableYears.length - 1);
 }
 
-yearSlider.on('input', function() {
+// Consolidated function to refresh view and update active country
+function refreshViewAndActiveCountry() {
+    refreshSingleEditionData(currentYear, currentSeason);
+    updateMap();
+    updateNavButtons();
+    
+    if (!activeCountry.empty()) {
+        setInfoPanel(activeCountry.datum());
+    }
+}
+
+// Handler for year slider changes
+const handleYearChange = function() {
     const selected = +this.value;
     const availableYears = currentSeason === 'Summer' ? summerYears : winterYears;
     const closest = ops.findClosestYear(availableYears, selected);
+    
     currentYear = closest;
+    yearSlider.property('value', closest);
     yearDisplay.text(closest);
     currentView = 'singleEdition';
+    
     d3.select('#allEditionsBtn').classed('active', false);
-    refreshSingleEditionData(currentYear, currentSeason);
-    updateMap();
-    if (!activeCountry.empty()) countryClick(null, activeCountry.datum());
-    if (!activeCountry.empty()) setInfoPanel(activeCountry.datum());
     toggleYearControls(true);
-    updateNavButtons();
-});
+    refreshViewAndActiveCountry();
+};
+
+// Handle both input (drag) and click events on slider
+yearSlider.on('input', debounce(handleYearChange, 100));
+yearSlider.on('click', handleYearChange);
 
 prevBtn.on('click', function() {
     const availableYears = currentSeason === 'Summer' ? summerYears : winterYears;
     const idx = availableYears.indexOf(+yearSlider.property('value'));
+    
     if (idx > 0) {
         const newYear = availableYears[idx - 1];
         yearSlider.property('value', newYear);
         yearDisplay.text(newYear);
         currentYear = newYear;
         currentView = 'singleEdition';
+        
         d3.select('#allEditionsBtn').classed('active', false);
-        refreshSingleEditionData(currentYear, currentSeason);
-        updateMap();
-        if (!activeCountry.empty()) countryClick(null, activeCountry.datum());
-        if (!activeCountry.empty()) setInfoPanel(activeCountry.datum());
         toggleYearControls(true);
-        updateNavButtons();
+        refreshViewAndActiveCountry();
     }
 });
 
 nextBtn.on('click', function() {
     const availableYears = currentSeason === 'Summer' ? summerYears : winterYears;
     const idx = availableYears.indexOf(+yearSlider.property('value'));
+    
     if (idx >= 0 && idx < availableYears.length - 1) {
         const newYear = availableYears[idx + 1];
         yearSlider.property('value', newYear);
         yearDisplay.text(newYear);
         currentYear = newYear;
         currentView = 'singleEdition';
+        
         d3.select('#allEditionsBtn').classed('active', false);
-        refreshSingleEditionData(currentYear, currentSeason);
-        updateMap();
-        if (!activeCountry.empty()) countryClick(null, activeCountry.datum());
-        if (!activeCountry.empty()) setInfoPanel(activeCountry.datum());
         toggleYearControls(true);
-        updateNavButtons();
+        refreshViewAndActiveCountry();
     }
 });
 
 // Setup season buttons
 d3.selectAll(".season-btn[data-season]").on("click", function() {
+    // Deactivate all buttons first
     d3.selectAll(".season-btn").classed("active", false);
     d3.select(this).classed("active", true);
-    currentSeason = d3.select(this).attr("data-season");
     
-    // Force la vue "singleEdition"
+    currentSeason = d3.select(this).attr("data-season");
+    lastSingleEditionSeason = currentSeason; // Save last selected season
     currentView = "singleEdition";
+    
     d3.select("#allEditionsBtn").classed("active", false);
     updateSliderForSeason(currentSeason);
-    refreshSingleEditionData(currentYear, currentSeason);
-    updateNavButtons();
-    updateMap();
-    if (!activeCountry.empty()) {
-        countryClick(null, activeCountry.datum());
-        setInfoPanel(activeCountry.datum());
-    }
     toggleYearControls(true);
+    refreshViewAndActiveCountry();
 });
 
 // Add "All Editions" button and functionality
@@ -804,15 +887,32 @@ controlsDiv.append("div")
     .html('<button class="season-btn" id="allEditionsBtn" data-view="allEditions">Toutes Éditions</button>');
 
 d3.select("#allEditionsBtn").on("click", function() {
-    d3.selectAll(".season-btn").classed("active", false); // Désactive les boutons saison
-    d3.select(this).classed("active", true); // Active "Toutes Éditions"
-    currentView = "allEditions";
-    updateMap();
-    if (!activeCountry.empty()) {
-        countryClick(null, activeCountry.datum());
-        setInfoPanel(activeCountry.datum());
+    // Toggle behavior: if already in "allEditions" view, go back to last season
+    if (currentView === "allEditions") {
+        // Return to last selected season view
+        currentView = "singleEdition";
+        currentSeason = lastSingleEditionSeason;
+        
+        // Deactivate all buttons and activate the correct season button
+        d3.selectAll(".season-btn").classed("active", false);
+        d3.select(`.season-btn[data-season="${currentSeason}"]`).classed("active", true);
+        
+        updateSliderForSeason(currentSeason);
+        toggleYearControls(true);
+        refreshViewAndActiveCountry();
+    } else {
+        // Switch to "allEditions" view
+        d3.selectAll(".season-btn").classed("active", false);
+        d3.select(this).classed("active", true);
+        
+        currentView = "allEditions";
+        toggleYearControls(false);
+        
+        updateMap();
+        if (!activeCountry.empty()) {
+            setInfoPanel(activeCountry.datum());
+        }
     }
-    toggleYearControls(false); // Cache les contrôles année/saison
 });
 
 // Function to toggle visibility of year and season controls
@@ -860,9 +960,10 @@ Promise.all([
         .attr("d", pathGenerator)
         .attr("class", "Country")
         .attr("fill", "#ccc")
-        .style("stroke", "transparent")
+        .style("stroke", "none")
         .style("stroke-width", 0.5)
         .style("opacity", 0.8)
+        .style("cursor", "pointer")
         .on("mouseover", mouseOver)
         .on("mouseleave", mouseLeave)
         .on("mousemove", mouseMove)
