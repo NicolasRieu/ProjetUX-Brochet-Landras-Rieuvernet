@@ -215,27 +215,6 @@ function drawNightingaleRose(countries) {
         });
     });
 
-    const rings = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
-
-    rings.forEach(pct => {
-        const r = (pct / 100) * maxRadius;
-        g.append("circle")
-            .attr("r", r)
-            .attr("fill", "none")
-            .attr("stroke", "#e2e8f0")
-            .attr("stroke-width", 0.3)
-            .attr("stroke-dasharray", "1,1");
-
-        if (pct % 10 === 0) {
-            g.append("text")
-                .attr("x", r + 4)
-                .attr("y", -4)
-                .attr("font-size", "7px")
-                .attr("fill", "#cbd5e0")
-                .attr("font-weight", "600")
-                .text(`${pct}%`);
-        }
-    });
 
     const arc = d3.arc()
         .innerRadius(0)
