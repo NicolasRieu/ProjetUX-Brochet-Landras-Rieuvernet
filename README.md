@@ -11,7 +11,7 @@ Existe-t-il une corrélation entre le nombre d'habitant/le nombre de participati
 
 | User Task         | Description   |
 | -------------     |:-------------:|
-| Filter            | Filtrer par saison/sexe |
+| Filter            | Filtrer par saison |
 | Zoom              | Se concentrer sur une édition spécifique |
 | Details-on-demand | Afficher le nombre de médailles, le nombre d’habitants, le nombre de participations... |
 | Relate             | Est ce qu’il y a une corrélation entre le nombre d’habitants/nombre de participations et les médailles obtenues |
