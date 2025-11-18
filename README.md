@@ -31,7 +31,7 @@ Tâches par types d'utilisateurs: ![](image/TasksByUser.png)
 
 # Datasets utilisés dans le projet
 
-## 1. Dataset Jeux Olympiques (1896-2016)
+## 1. Dataset Jeux Olympiques (1900-2016)
 
 | ID | Name | Sex | Age | Height | Weight | Team | **NOC** | Games | **Year** | **Season** | City | Sport | Event | **Medal** |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
