@@ -95,13 +95,23 @@ export function calculateParticipantsByCountry(yearAthletes) {
 /**
  * Calcule le nombre de médailles par pays
  * @param {Array} yearAthletes - Données des athlètes pour une année/saison
- * @returns {Map<string, number>} - Map de NOC -> nombre de médailles
+ * @returns {Map<string, Object>} - Map de NOC -> {total, gold, silver, bronze}
  */
 export function calculateMedalsByCountry(yearAthletes) {
   const athletesWithMedals = yearAthletes.filter(d => d.Medal && d.Medal.trim() !== "");
   return d3.rollup(
     athletesWithMedals,
-    v => v.length,
+    v => {
+      const gold = v.filter(d => d.Medal === "Gold").length;
+      const silver = v.filter(d => d.Medal === "Silver").length;
+      const bronze = v.filter(d => d.Medal === "Bronze").length;
+      return {
+        total: v.length,
+        gold: gold,
+        silver: silver,
+        bronze: bronze
+      };
+    },
     d => d.NOC
   );
 }
@@ -136,7 +146,7 @@ export function getCountryNames(yearAthletes) {
 /**
  * Combine les données de participants, médailles et population
  * @param {Map} participantsByCountry - Map de NOC -> participants
- * @param {Map} medalsByCountry - Map de NOC -> médailles
+ * @param {Map} medalsByCountry - Map de NOC -> {total, gold, silver, bronze}
  * @param {Map} populationByCountry - Map de Code -> {population, continent}
  * @param {Map} countryNames - Map de NOC -> nom du pays
  * @returns {Array<Object>} - Tableau d'objets combinés
@@ -145,7 +155,7 @@ export function combineData(participantsByCountry, medalsByCountry, populationBy
   const combinedData = [];
   
   participantsByCountry.forEach((participants, noc) => {
-    const medals = medalsByCountry.get(noc) || 0;
+    const medalData = medalsByCountry.get(noc) || { total: 0, gold: 0, silver: 0, bronze: 0 };
     const popData = populationByCountry.get(noc);
     
     if (popData && popData.population > 0) {
@@ -153,7 +163,10 @@ export function combineData(participantsByCountry, medalsByCountry, populationBy
         noc: noc,
         countryName: countryNames.get(noc) || noc,
         participants: participants,
-        medals: medals,
+        medals: medalData.total,
+        gold: medalData.gold,
+        silver: medalData.silver,
+        bronze: medalData.bronze,
         population: popData.population,
         continent: popData.continent || "Unknown"
       });

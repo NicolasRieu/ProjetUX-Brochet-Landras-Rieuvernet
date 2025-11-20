@@ -11,21 +11,20 @@ Existe-t-il une corrélation entre le nombre d'habitant/le nombre de participati
 
 | User Task         | Description   |
 | -------------     |:-------------:|
-| Filter            | Filtrer par saison/sexe |
+| Filter            | Filtrer par saison |
 | Zoom              | Se concentrer sur une édition spécifique |
 | Details-on-demand | Afficher le nombre de médailles, le nombre d’habitants, le nombre de participations... |
 | Relate             | Est ce qu’il y a une corrélation entre le nombre d’habitants/nombre de participations et les médailles obtenues |
 | Order              | Trier les pays par ratio  |
 | Compare            | Comparer la proportion pour un pays et la moyenne global    |
 | Locate             | Par pays   |
-| Identify           | Un intervalle  par population   |
 
 
 ## Publics ciblés:
 
 1. **Commités Internationals des Jeux olympiques** qui cherchent à prouver que chaque nation, peut-importe sa taille a la possibilité de gagner des médailles. 
 2. **Journalistes sportifs** qui souhaitent analyser sous un angle différents le nombre de victoires de chaque nation, en les mettant à l'échelle de la population des pays et du nombre de participants par édition.
-3. **Historien** qui souhaitent analyser les évolutions au cours de l'histoire des Jeux Olympiques à travers différents critères comme la proportion de victoire entre hommes et femmes, ou la quantité de médailles par épreuve pour chaque pays.
+3. **Historien** qui souhaitent analyser les évolutions au cours de l'histoire des Jeux Olympiques à travers différents critères comme le type et le nombre de médailles pour chaque pays.
  
 Tâches par types d'utilisateurs: ![](image/TasksByUser.png)
 
@@ -44,7 +43,7 @@ Tâches par types d'utilisateurs: ![](image/TasksByUser.png)
 | 234 | Aleksandr Ivanov | M | 26 | 182 | 78 | Soviet Union | **URS** | 1988 Winter | **1988** | **Winter** | Calgary | Ice Hockey | Ice Hockey Men | **Gold** |
 | 567 | Vladimir Petrov | M | 29 | 185 | 83 | Russia | **RUS** | 1994 Winter | **1994** | **Winter** | Lillehammer | Ice Hockey | Ice Hockey Men | **(vide)** |
 
-**Colonnes conservées** : NOC, Year, Season, Medal, ID
+**Colonnes conservées** : NOC, Year, Season, Medal, ID, Event
 
 ## 2. Dataset Population mondiale (-10000-2100)
 
@@ -61,8 +60,7 @@ Tâches par types d'utilisateurs: ![](image/TasksByUser.png)
 | United States | **USA** | **1992** | **256,894,000** | North America |
 | United States | **USA** | **2020** | **331,003,000** | North America |
 
-**Colonnes conservées** : Code, Year, Population (historical)
-
+**Colonnes conservées** : Code, Year, Population (historical), Continent
 
 # Visualisation de Romain Brochet
 
